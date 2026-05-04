@@ -1,0 +1,3 @@
+echo model/ >> .gitignore
+echo *.pt >> .gitignore
+echo *.safetensors >> .gitignore
