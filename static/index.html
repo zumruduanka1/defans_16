@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>DEFANS PRO</title>
+
+<style>
+body {
+  font-family: Arial;
+  background: radial-gradient(circle at top, #0f172a, #020617);
+  color: white;
+  text-align: center;
+}
+
+textarea {
+  width: 60%;
+  height: 120px;
+  border-radius: 10px;
+}
+
+button {
+  margin:10px;
+  padding:10px;
+  border-radius:10px;
+}
+
+.card {
+  display:inline-block;
+  margin:10px;
+  padding:20px;
+  border:1px solid rgba(255,255,255,0.1);
+  box-shadow:0 0 15px rgba(0,255,200,0.2);
+}
+</style>
+
+</head>
+
+<body>
+
+<h1>DEFANS PRO</h1>
+
+<textarea id="text"></textarea><br>
+
+<button onclick="analyze()">Analiz</button>
+<button onclick="sendMail()">Sonucu 2 Maile Gönder</button>
+
+<div class="card">
+Risk: <span id="risk">0</span>
+</div>
+
+<div class="card">
+Güvenli: <span id="safe">0</span>
+</div>
+
+<h2>Haberler</h2>
+<div id="news"></div>
+
+<h2>Sosyal Medya</h2>
+<div id="social"></div>
+
+<script>
+async function analyze(){
+  const text = document.getElementById("text").value;
+
+  const res = await fetch("/api/analyze", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({text})
+  });
+
+  const data = await res.json();
+  document.getElementById("risk").innerText = data.risk;
+  document.getElementById("safe").innerText = data.safe;
+}
+
+async function sendMail(){
+  const text = document.getElementById("text").value;
+
+  const res = await fetch("/api/notify", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({text})
+  });
+
+  const data = await res.json();
+  alert(data.status);
+}
+
+async function loadNews(){
+  const res = await fetch("/api/news");
+  const data = await res.json();
+
+  const div = document.getElementById("news");
+  div.innerHTML = "";
+
+  data.forEach(n=>{
+    div.innerHTML += `<div><a href="${n.url}" target="_blank">${n.title}</a></div>`;
+  });
+}
+
+async function loadSocial(){
+  const res = await fetch("/api/social");
+  const data = await res.json();
+
+  const div = document.getElementById("social");
+  div.innerHTML = "";
+
+  data.forEach(t=>{
+    div.innerHTML += `<div>${t.text}</div>`;
+  });
+}
+
+loadNews();
+loadSocial();
+</script>
+
+</body>
+</html>
