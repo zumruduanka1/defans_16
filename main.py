@@ -1,12 +1,12 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-import requests, os, smtplib
+import requests, os, smtplib, re
 from email.mime.text import MIMEText
 
 app = Flask(__name__, static_folder="static")
 CORS(app)
 
-# 🔐 ENV
+# ENV
 HF_TOKEN = os.getenv("HF_TOKEN")
 X_BEARER = os.getenv("X_BEARER_TOKEN")
 NEWS_API_KEY = os.getenv("NEWS_API_KEY")
@@ -16,109 +16,141 @@ MAIL_PASS = os.getenv("MAIL_PASS")
 MY_EMAIL = os.getenv("MY_EMAIL")
 FRIEND_EMAIL = os.getenv("FRIEND_EMAIL")
 
-# 🧠 HuggingFace (hafif kullanım)
-HF_API_URL = "https://api-inference.huggingface.co/models/savasy/bert-base-turkish-sentiment-cased"
+headers_hf = {"Authorization": f"Bearer {HF_TOKEN}"} if HF_TOKEN else {}
 
-headers_hf = {
-    "Authorization": f"Bearer {HF_TOKEN}"
-} if HF_TOKEN else {}
+history = []
 
-# 🌐 FRONTEND
 @app.route("/")
 def home():
     return send_from_directory("static", "index.html")
 
-# 🧠 ANALİZ (SADECE API → RAM YEMEZ)
+# 🧠 GELİŞMİŞ ANALİZ
 def analyze_text(text):
+    text_lower = text.lower()
+
+    risk = 0
+
+    # 🚨 clickbait / fake pattern
+    patterns = [
+        "şok", "inanamayacaksınız", "acil", "hemen paylaş",
+        "gizli gerçek", "yasaklandı", "ifşa", "bomba haber",
+        "herkes bunu konuşuyor"
+    ]
+
+    for p in patterns:
+        if p in text_lower:
+            risk += 15
+
+    # 🔗 kaynak kontrol
+    if "http" not in text_lower:
+        risk += 10
+
+    # 🧠 HF zero-shot (daha doğru yaklaşım)
     try:
         res = requests.post(
-            HF_API_URL,
+            "https://api-inference.huggingface.co/models/facebook/bart-large-mnli",
             headers=headers_hf,
-            json={"inputs": text},
+            json={
+                "inputs": text,
+                "parameters": {
+                    "candidate_labels": ["gerçek haber", "yalan haber", "manipülasyon"]
+                }
+            },
             timeout=15
         )
-
         data = res.json()
 
-        if isinstance(data, list):
-            result = data[0][0]
-            score = int(result["score"] * 100)
+        if "scores" in data:
+            fake_score = int(data["scores"][1] * 100)
+            risk += fake_score // 2
 
-            if result["label"] == "NEGATIVE":
-                return {"risk": score, "safe": 100 - score}
-            else:
-                return {"risk": 100 - score, "safe": score}
+    except:
+        pass
 
-    except Exception as e:
-        print("HF ERROR:", e)
+    risk = min(risk, 100)
+    safe = 100 - risk
 
-    return {"risk": 50, "safe": 50}
+    return {"risk": risk, "safe": safe}
 
 @app.route("/api/analyze", methods=["POST"])
 def analyze_api():
     data = request.get_json()
     text = data.get("text", "")
 
-    if not text:
-        return jsonify({"error": "Boş metin"}), 400
+    result = analyze_text(text)
 
-    return jsonify(analyze_text(text))
+    history.append({
+        "text": text[:50],
+        "risk": result["risk"]
+    })
 
-# 📰 HABER
+    return jsonify(result)
+
+@app.route("/api/history")
+def get_history():
+    return jsonify(history[-10:][::-1])
+
+# 📰 HABER (fallback)
 @app.route("/api/news")
 def news():
     try:
-        if not NEWS_API_KEY:
-            return jsonify([])
+        if NEWS_API_KEY:
+            url = f"https://newsapi.org/v2/top-headlines?country=tr&apiKey={NEWS_API_KEY}"
+            res = requests.get(url).json()
 
-        url = f"https://newsapi.org/v2/top-headlines?country=tr&apiKey={NEWS_API_KEY}"
-        res = requests.get(url).json()
+            articles = [
+                {"title": a["title"], "url": a["url"]}
+                for a in res.get("articles", [])
+            ]
 
-        return jsonify([
-            {"title": a["title"], "url": a["url"]}
-            for a in res.get("articles", [])
-        ])
+            if articles:
+                return jsonify(articles)
+
     except:
-        return jsonify([])
+        pass
 
-# 🐦 SOSYAL MEDYA (X)
+    # fallback
+    return jsonify([
+        {"title": "Türkiye gündemi yoğun", "url": "#"},
+        {"title": "Ekonomi gelişmeleri takip ediliyor", "url": "#"}
+    ])
+
+# 🐦 SOSYAL (fallback)
 @app.route("/api/social")
 def social():
     try:
-        if not X_BEARER:
-            return jsonify([])
+        if X_BEARER:
+            url = "https://api.twitter.com/2/tweets/search/recent"
+            headers = {"Authorization": f"Bearer {X_BEARER}"}
 
-        url = "https://api.twitter.com/2/tweets/search/recent"
+            params = {
+                "query": "gündem OR haber -is:retweet lang:tr",
+                "max_results": 5
+            }
 
-        headers = {
-            "Authorization": f"Bearer {X_BEARER}"
-        }
+            res = requests.get(url, headers=headers, params=params).json()
 
-        params = {
-            "query": "haber OR gündem -is:retweet lang:tr",
-            "max_results": 10,
-            "tweet.fields": "created_at,text"
-        }
+            tweets = [t["text"] for t in res.get("data", [])]
 
-        res = requests.get(url, headers=headers, params=params).json()
+            if tweets:
+                return jsonify(tweets)
 
-        return jsonify([
-            {"text": t["text"], "time": t["created_at"]}
-            for t in res.get("data", [])
-        ])
     except:
-        return jsonify([])
+        pass
 
-# 📧 2 MAİLE GÖNDER
-def send_mail_multi(subject, content):
+    # fallback
+    return jsonify([
+        "Gündemde yeni gelişmeler var",
+        "Sosyal medyada tartışmalar büyüyor"
+    ])
+
+# 📧 MAIL
+def send_mail(content):
     try:
-        recipients = [e for e in [MY_EMAIL, FRIEND_EMAIL] if e]
-
-        if not recipients:
-            return "Mail yok"
+        recipients = [MY_EMAIL, FRIEND_EMAIL]
 
         msg = MIMEText(content)
-        msg["Subject"] = subject
+        msg["Subject"] = "DEFANS SONUÇ"
         msg["From"] = MAIL_USER
         msg["To"] = ", ".join(recipients)
 
@@ -126,8 +158,7 @@ def send_mail_multi(subject, content):
             server.login(MAIL_USER, MAIL_PASS)
             server.sendmail(MAIL_USER, recipients, msg.as_string())
 
-        return "Mail gönderildi"
-
+        return "Gönderildi"
     except Exception as e:
         return str(e)
 
@@ -139,20 +170,16 @@ def notify():
     result = analyze_text(text)
 
     content = f"""
-DEFANS SONUÇ
+RİSK: {result['risk']}
+GÜVENLİ: {result['safe']}
 
-Risk: {result['risk']}
-Güvenli: {result['safe']}
-
-Metin:
 {text}
 """
+    status = send_mail(content)
 
-    status = send_mail_multi("DEFANS RAPOR", content)
+    return jsonify({"status": status})
 
-    return jsonify({"status": status, "result": result})
-
-# 🚀 RUN (Render uyumlu)
+# RUN
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)

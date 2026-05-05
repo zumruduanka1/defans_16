@@ -1,57 +1,138 @@
 <!DOCTYPE html>
-<html>
+<html lang="tr">
 <head>
 <meta charset="UTF-8">
 <title>DEFANS PRO</title>
 
 <style>
 body {
-  background: #020617;
-  color: white;
-  text-align: center;
+  margin:0;
   font-family: Arial;
+  background: radial-gradient(circle at top, #0f172a, #020617);
+  color:white;
+  text-align:center;
+}
+
+.container {
+  margin-top:40px;
 }
 
 textarea {
-  width: 60%;
-  height: 120px;
-  border-radius: 10px;
+  width:60%;
+  height:120px;
+  border-radius:12px;
+  padding:10px;
+  border:none;
 }
 
 button {
-  padding: 10px;
-  margin: 5px;
+  margin:10px;
+  padding:12px 20px;
+  border-radius:12px;
+  border:none;
+  background:#0ea5e9;
+  color:white;
+  cursor:pointer;
+}
+
+.cards {
+  margin-top:30px;
 }
 
 .card {
   display:inline-block;
   padding:20px;
   margin:10px;
-  border:1px solid #00ffc3;
+  border-radius:15px;
+  border:1px solid rgba(255,255,255,0.1);
+  backdrop-filter: blur(10px);
+  box-shadow:0 0 20px rgba(0,255,200,0.2);
+}
+
+.bar-container {
+  width:60%;
+  margin:10px auto;
+  background:#111;
+  border-radius:10px;
+}
+
+.bar {
+  height:20px;
+  width:0%;
+  border-radius:10px;
+  transition:0.5s;
+}
+
+.risk { background:red; }
+.safe { background:green; }
+
+.section {
+  margin-top:40px;
+}
+
+.list-item {
+  margin:5px;
+  padding:10px;
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:10px;
 }
 </style>
-
 </head>
 
 <body>
 
+<div class="container">
+
 <h1>DEFANS PRO</h1>
 
-<textarea id="text"></textarea><br>
+<textarea id="text" placeholder="Metin gir..."></textarea><br>
 
 <button onclick="analyze()">Analiz</button>
 <button onclick="sendMail()">2 Maile Gönder</button>
 
-<div class="card">Risk: <span id="risk">0</span></div>
-<div class="card">Güvenli: <span id="safe">0</span></div>
+<div class="cards">
+  <div class="card">
+    <h3>Risk</h3>
+    <span id="riskValue">0</span>
+  </div>
 
-<h2>Haberler</h2>
+  <div class="card">
+    <h3>Güvenli</h3>
+    <span id="safeValue">0</span>
+  </div>
+</div>
+
+<div class="bar-container">
+  <div id="riskBar" class="bar risk"></div>
+</div>
+
+<div class="bar-container">
+  <div id="safeBar" class="bar safe"></div>
+</div>
+
+</div>
+
+<!-- GEÇMİŞ -->
+<div class="section">
+<h2>Geçmiş Analizler</h2>
+<div id="history"></div>
+</div>
+
+<!-- HABER -->
+<div class="section">
+<h2>Gündem</h2>
 <div id="news"></div>
+</div>
 
+<!-- SOSYAL -->
+<div class="section">
 <h2>Sosyal Medya</h2>
 <div id="social"></div>
+</div>
 
 <script>
+
+// 🧠 ANALİZ
 async function analyze(){
   const text = document.getElementById("text").value;
 
@@ -62,10 +143,22 @@ async function analyze(){
   });
 
   const data = await res.json();
-  document.getElementById("risk").innerText = data.risk;
-  document.getElementById("safe").innerText = data.safe;
+
+  document.getElementById("riskValue").innerText = data.risk;
+  document.getElementById("safeValue").innerText = data.safe;
+
+  document.getElementById("riskBar").style.width = data.risk + "%";
+  document.getElementById("safeBar").style.width = data.safe + "%";
+
+  // ⚠️ uyarı
+  if(data.risk > 70){
+    alert("⚠️ Bu içerik yüksek riskli olabilir!");
+  }
+
+  loadHistory();
 }
 
+// 📧 MAIL
 async function sendMail(){
   const text = document.getElementById("text").value;
 
@@ -79,6 +172,20 @@ async function sendMail(){
   alert(data.status);
 }
 
+// 📜 GEÇMİŞ
+async function loadHistory(){
+  const res = await fetch("/api/history");
+  const data = await res.json();
+
+  const div = document.getElementById("history");
+  div.innerHTML = "";
+
+  data.forEach(h=>{
+    div.innerHTML += `<div class="list-item">${h.text} → Risk: ${h.risk}</div>`;
+  });
+}
+
+// 📰 HABER
 async function loadNews(){
   const res = await fetch("/api/news");
   const data = await res.json();
@@ -87,10 +194,13 @@ async function loadNews(){
   div.innerHTML = "";
 
   data.forEach(n=>{
-    div.innerHTML += `<div><a href="${n.url}" target="_blank">${n.title}</a></div>`;
+    div.innerHTML += `<div class="list-item">
+      <a href="${n.url}" target="_blank">${n.title}</a>
+    </div>`;
   });
 }
 
+// 🐦 SOSYAL
 async function loadSocial(){
   const res = await fetch("/api/social");
   const data = await res.json();
@@ -99,12 +209,15 @@ async function loadSocial(){
   div.innerHTML = "";
 
   data.forEach(t=>{
-    div.innerHTML += `<div>${t.text}</div>`;
+    div.innerHTML += `<div class="list-item">${t}</div>`;
   });
 }
 
+// 🚀 LOAD
+loadHistory();
 loadNews();
 loadSocial();
+
 </script>
 
 </body>
