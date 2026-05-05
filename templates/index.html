@@ -3,146 +3,218 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DEFANS PRO</title>
+<title>DEFANS PRO | Dezenformasyon Analiz Sistemi</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
 <style>
-body{
-    background:#0d1117;
-    color:white;
-    font-family:Inter;
-    padding:20px;
+:root {
+    --bg-dark:#080a0f;
+    --card-bg:rgba(22,27,34,0.6);
+    --border-color:#21262d;
+    --accent-purple:#7d5fff;
+    --accent-blue:#3d5afe;
+    --text-gray:#8b949e;
+    --danger:#ff4757;
+    --warning:#f39c12;
+    --success:#2ed573;
 }
 
-.container{
-    max-width:1100px;
-    margin:auto;
+*{box-sizing:border-box;margin:0;padding:0}
+
+body{
+background: radial-gradient(circle at top,#161b22 0%,#080a0f 100%);
+color:#fff;
+font-family:'Inter',sans-serif;
+padding:20px;
+}
+
+header{
+max-width:1200px;margin:0 auto 60px;
+display:flex;justify-content:space-between;align-items:center;
+}
+
+.logo{display:flex;gap:10px;font-weight:700;font-size:22px}
+.logo-box{
+background:linear-gradient(135deg,#3d5afe,#7d5fff);
+width:32px;height:32px;border-radius:8px;
+display:flex;align-items:center;justify-content:center;
+}
+
+.ai-badge{
+font-size:12px;border:1px solid #1f2937;
+padding:6px 16px;border-radius:20px;color:#58a6ff;
+}
+
+.hero{text-align:center;margin-bottom:50px}
+.hero h1{font-size:64px;font-weight:800}
+.hero p{color:#8b949e;margin-top:15px}
+
+.stats-row{
+display:flex;justify-content:center;gap:15px;margin-bottom:60px
+}
+
+.stat-box{
+background:var(--card-bg);
+border:1px solid var(--border-color);
+padding:20px;border-radius:16px;text-align:center;
+}
+
+.grid-container{
+display:grid;grid-template-columns:1fr 1fr;gap:30px;
+max-width:1100px;margin:auto;
 }
 
 .card{
-    background:#161b22;
-    padding:20px;
-    border-radius:15px;
-    margin-bottom:20px;
+background:var(--card-bg);
+border:1px solid var(--border-color);
+border-radius:24px;padding:30px;
 }
 
-button{
-    background:#7d5fff;
-    border:none;
-    padding:12px;
-    color:white;
-    border-radius:10px;
-    width:100%;
-    cursor:pointer;
-}
+.tabs{display:flex;margin-bottom:20px}
+.tab{flex:1;padding:10px;text-align:center;color:#8b949e}
+.tab.active{background:#21262d;color:#fff;border-radius:8px}
 
 input,textarea{
-    width:100%;
-    padding:10px;
-    border-radius:10px;
-    margin-top:10px;
-    border:none;
+width:100%;padding:14px;border-radius:12px;
+background:#ebf1f9;border:none;margin-top:5px;
 }
 
-.row{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:20px;
+textarea{height:120px}
+
+.btn-main{
+width:100%;padding:16px;margin-top:10px;
+border:none;border-radius:14px;
+background:linear-gradient(90deg,#4461f2,#7d5fff);
+color:white;font-weight:600;cursor:pointer;
 }
 
-.stat{
-    font-size:20px;
-}
+table{width:100%}
+td{padding:12px 0;border-top:1px solid #21262d}
+
+.progress-container{height:6px;background:#21262d;border-radius:10px}
+.progress-bar{height:100%}
+
+.pill-warning{color:#f39c12}
+.pill-success{color:#2ed573}
 </style>
 </head>
 
 <body>
 
-<div class="container">
+<header>
+<div class="logo">
+<div class="logo-box"><i class="fa-solid fa-shield-halved"></i></div>
+DEFANS <span style="color:#3d5afe">PRO</span>
+</div>
+<div class="ai-badge">AI Powered</div>
+</header>
 
-<h1>DEFANS PRO</h1>
+<section class="hero">
+<h1>DEFANS</h1>
+<h1 style="opacity:.9">Dezenformasyon Analiz Sistemi</h1>
+<p>Gerçek zamanlı sosyal medya + AI analiz</p>
+</section>
 
-<div class="row">
+<div class="stats-row">
+<div class="stat-box"><h2 id="total">0</h2><span>Analiz</span></div>
+<div class="stat-box"><h2 id="danger">0</h2><span>Riskli</span></div>
+<div class="stat-box"><h2 id="safe">0</h2><span>Güvenli</span></div>
+</div>
+
+<div class="grid-container">
 
 <div class="card">
+<div class="tabs">
+<div class="tab active">Metin</div>
+<div class="tab">URL</div>
+<div class="tab">Video</div>
+</div>
+
+<input id="email" placeholder="Mail">
 <textarea id="text" placeholder="Metin gir"></textarea>
-<button onclick="analyze()">Analiz</button>
+
+<button class="btn-main" onclick="analyze()">Analiz Başlat</button>
 
 <input id="video" placeholder="Video URL">
-<button onclick="video()">Deepfake Analiz</button>
-</div>
-
-<div class="card">
-<h3>Canlı Analizler</h3>
-<div id="list"></div>
-</div>
+<button class="btn-main" onclick="video()">🎥 Video Analiz</button>
 
 </div>
 
 <div class="card">
-<h3>Dashboard</h3>
-<div class="stat" id="stats"></div>
+<table>
+<tbody id="table"></tbody>
+</table>
 </div>
 
 </div>
 
 <script>
 
+let total=0,danger=0,safe=0;
+
+function updateStats(){
+document.getElementById("total").innerText=total;
+document.getElementById("danger").innerText=danger;
+document.getElementById("safe").innerText=safe;
+}
+
+// 🔥 ANALİZ
 async function analyze(){
-    let text = document.getElementById("text").value;
+let text=document.getElementById("text").value;
+let email=document.getElementById("email").value;
 
-    let r = await fetch("/api/analyze",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({text})
-    });
+let r=await fetch("/api/analyze",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({text,email})
+});
 
-    let d = await r.json();
-    alert("Risk: "+d.score);
+let d=await r.json();
+addRow(text,d.risk);
 }
 
+// 🔥 TABLO
+function addRow(text,risk){
+total++;
+
+let color="#f39c12";
+let label="Şüpheli";
+
+if(risk>70){danger++;color="red";label="Tehlikeli";}
+else if(risk<40){safe++;color="#2ed573";label="Güvenli";}
+
+updateStats();
+
+let row= <tr> <td>${text.substring(0,30)}</td> <td><div class="progress-container"><div class="progress-bar" style="width:${risk}%;background:${color}"></div></div></td> <td>${label}</td> </tr>;
+
+document.getElementById("table").innerHTML=row+
+document.getElementById("table").innerHTML;
+}
+
+// 🔥 SOSYAL
 async function loadSocial(){
-    let r = await fetch("/api/social");
-    let data = await r.json();
+let r=await fetch("/api/social");
+let data=await r.json();
 
-    let html="";
-    data.forEach(p=>{
-        html += <div>🐦 ${p.text} (${p.score})</div>;
-    });
-
-    document.getElementById("list").innerHTML = html;
+data.forEach(p=>addRow(p.text,p.risk));
 }
-
-async function video(){
-    let url = document.getElementById("video").value;
-
-    let r = await fetch("/api/deepfake",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({url})
-    });
-
-    let d = await r.json();
-    alert("Deepfake: "+d.score+"%");
-}
-
-async function stats(){
-    let r = await fetch("/api/stats");
-    let d = await r.json();
-
-    document.getElementById("stats").innerText =
-        "Toplam: "+d.total+" | Riskli: "+d.danger+" | Güvenli: "+d.safe;
-}
-
-// 🔥 AUTO REFRESH
-setInterval(()=>{
-    loadSocial();
-    stats();
-},5000);
-
 loadSocial();
-stats();
+
+// 🔥 VIDEO
+async function video(){
+let url=document.getElementById("video").value;
+
+let r=await fetch("/api/video",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({url})
+});
+
+let d=await r.json();
+alert("Deepfake Risk: "+d.score+"%");
+}
 
 </script>
 
