@@ -150,50 +150,28 @@ DEFANS <span style="color:#3d5afe">PRO</span>
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<canvas id="chart" style="max-width:400px;margin:auto;"></canvas>
+
 <script>
-document.querySelector(".btn-main").onclick = async () => {
-    const text = document.querySelector("textarea").value;
-    const email = document.querySelector("input").value;
+let chart;
 
-    const res = await fetch("/api/analyze", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({text,email})
-    });
+function updateChart(risk){
+    const ctx = document.getElementById("chart");
 
-    const data = await res.json();
+    if(chart) chart.destroy();
 
-    alert("Risk: "+data.risk+"%");
-
-    location.reload();
-};
-
-// sosyal medya yükle
-async function loadSocial(){
-    let r = await fetch("/api/social");
-    let data = await r.json();
-
-    let tbody = document.querySelector("tbody");
-
-    data.forEach(p=>{
-        let icon="🌐";
-        if(p.platform==="twitter") icon="🐦";
-        if(p.platform==="instagram") icon="📸";
-        if(p.platform==="tiktok") icon="🎵";
-        if(p.platform==="facebook") icon="📘";
-
-        let row = `
-        <tr>
-            <td>${icon} ${p.text}</td>
-            <td>${p.risk}%</td>
-            <td>${p.risk>70?"⚠️":"✅"}</td>
-        </tr>`;
-
-        tbody.innerHTML += row;
+    chart = new Chart(ctx, {
+        type: "doughnut",
+        data: {
+            labels: ["Risk", "Güven"],
+            datasets: [{
+                data: [risk, 100-risk]
+            }]
+        }
     });
 }
-
-loadSocial();
 </script>
 
 </body>

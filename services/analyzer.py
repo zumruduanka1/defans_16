@@ -1,39 +1,37 @@
-import os, requests
-from dotenv import load_dotenv
-load_dotenv()
+risk = real_ai_analyze(text)
 
-HF_API = "https://api-inference.huggingface.co/models/facebook/bart-large-mnli"
-HF_KEY = os.getenv("HF_API_KEY")
+if risk is None:
+    risk = analyze_ai(text)
 
-def analyze(text):
-    if not text or len(text.split()) < 5:
-        return {"score":0,"status":"geçersiz"}
+    api_key = os.getenv("OPENAI_API_KEY")
+
+    if not api_key:
+        return None
 
     try:
-        headers = {"Authorization": f"Bearer {HF_KEY}"}
-        payload = {
-            "inputs": text,
-            "parameters": {
-                "candidate_labels": ["fake news","real news"]
-            }
-        }
+        r = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "gpt-4o-mini",
+                "messages": [
+                    {"role": "system", "content": "0 ile 100 arasında sadece risk puanı ver."},
+                    {"role": "user", "content": text}
+                ]
+            },
+            timeout=10
+        )
 
-        r = requests.post(HF_API, headers=headers, json=payload, timeout=8)
         data = r.json()
+        result = data["choices"][0]["message"]["content"]
 
-        label = data["labels"][0]
-        score = int(data["scores"][0] * 100)
+        # sadece sayı çek
+        risk = int(''.join(filter(str.isdigit, result))[:3])
 
-        if label == "fake news":
-            return {"score": score, "status": "riskli"}
-        else:
-            return {"score": score, "status": "güvenli"}
+        return min(risk, 100)
 
     except:
-        score = 0
-        for k in ["şok","ifşa","gizli","son dakika"]:
-            if k in text.lower():
-                score += 25
-
-        score = min(score,100)
-        return {"score":score,"status":"riskli" if score>60 else "güvenli"}
+        return None

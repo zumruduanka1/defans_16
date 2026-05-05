@@ -10,5 +10,6 @@ function analyze(){
  .then(d=>{
    document.getElementById("result").innerText =
      d.status + " ("+d.risk+")";
+   updateChart(data.risk);
  })
 }
