@@ -2,7 +2,6 @@ import os
 import random
 import requests
 from flask import Flask, request, jsonify, render_template
-from flask_cors import CORS
 from dotenv import load_dotenv
 import smtplib
 from email.mime.text import MIMEText
@@ -10,26 +9,29 @@ from email.mime.text import MIMEText
 load_dotenv()
 
 app = Flask(__name__, template_folder="templates")
-CORS(app)
 
-# =========================
-# 🔥 ANA SAYFA (404 FIX)
-# =========================
+# =====================
+# ANA SAYFA
+# =====================
 @app.route("/")
 def home():
     return render_template("index.html")
 
-# =========================
-# 🔥 AI ANALİZ
-# =========================
+# =====================
+# ANALİZ (AI SIMULATED)
+# =====================
 @app.route("/api/analyze", methods=["POST"])
 def analyze():
     data = request.json
     text = data.get("text", "")
     email = data.get("email", "")
 
-    # Fake AI risk (istersen sonra gerçek AI bağlarız)
-    risk = random.randint(10, 95)
+    risk = random.randint(20, 95)
+
+    if "öldü" in text.lower() or "şok" in text.lower():
+        risk += 15
+
+    risk = min(risk, 100)
 
     if risk > 70:
         status = "Tehlikeli"
@@ -38,59 +40,49 @@ def analyze():
     else:
         status = "Şüpheli"
 
-    # 📧 MAIL GÖNDER
-    try:
-        send_mail(email, text, risk, status)
-    except Exception as e:
-        print("Mail hatası:", e)
+    # MAIL
+    if email and risk > 70:
+        try:
+            send_mail(email, text, risk, status)
+        except Exception as e:
+            print("Mail hata:", e)
 
-    return jsonify({
-        "risk": risk,
-        "status": status
-    })
+    return jsonify({"risk": risk, "status": status})
 
-# =========================
-# 🔥 SOSYAL MEDYA (API’siz)
-# =========================
+# =====================
+# SOSYAL MEDYA
+# =====================
 @app.route("/api/social")
 def social():
-    posts = [
-        {"platform": "twitter", "text": "Şok haber! büyük olay oldu", "risk": random.randint(40,90)},
-        {"platform": "instagram", "text": "Breaking news dünya karıştı", "risk": random.randint(20,80)},
-        {"platform": "tiktok", "text": "Bu videoyu kaldırmadan izle", "risk": random.randint(50,95)},
-        {"platform": "facebook", "text": "Resmi açıklama geldi", "risk": random.randint(10,60)}
+    data = [
+        {"platform": "twitter", "text": "Seçim sonuçları değiştirildi iddiası", "risk": 82},
+        {"platform": "instagram", "text": "Ünlü kişi öldü haberi", "risk": 65},
+        {"platform": "tiktok", "text": "Gizli teknoloji videosu", "risk": 45},
+        {"platform": "facebook", "text": "Aşı zararlı iddiası", "risk": 78}
     ]
+    return jsonify(data)
 
-    return jsonify(posts)
-
-# =========================
-# 🎥 DEEPFAKE (Simülasyon)
-# =========================
+# =====================
+# VIDEO ANALİZ
+# =====================
 @app.route("/api/video", methods=["POST"])
 def video():
-    data = request.json
-    url = data.get("url")
-
-    score = random.randint(30, 99)
-
     return jsonify({
-        "score": score,
-        "result": "Deepfake olabilir" if score > 60 else "Temiz görünüyor"
+        "score": random.randint(30, 95)
     })
 
-# =========================
-# 📧 MAIL SİSTEMİ (ENV)
-# =========================
+# =====================
+# MAIL
+# =====================
 def send_mail(to_email, text, risk, status):
     sender = os.getenv("MAIL_USER")
     password = os.getenv("MAIL_PASS")
 
     if not sender or not password:
-        print("Mail env yok")
         return
 
     msg = MIMEText(f"""
-Analiz Sonucu:
+DEFANS PRO ANALİZ
 
 Metin:
 {text}
@@ -99,7 +91,7 @@ Risk: %{risk}
 Durum: {status}
 """)
 
-    msg["Subject"] = "DEFANS PRO Analiz Sonucu"
+    msg["Subject"] = "⚠️ Riskli İçerik"
     msg["From"] = sender
     msg["To"] = to_email
 
@@ -109,9 +101,9 @@ Durum: {status}
     server.send_message(msg)
     server.quit()
 
-# =========================
-# 🚀 RUN
-# =========================
+# =====================
+# RUN
+# =====================
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)

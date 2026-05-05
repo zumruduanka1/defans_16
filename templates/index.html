@@ -151,71 +151,49 @@ DEFANS <span style="color:#3d5afe">PRO</span>
 </div>
 
 <script>
+document.querySelector(".btn-main").onclick = async () => {
+    const text = document.querySelector("textarea").value;
+    const email = document.querySelector("input").value;
 
-let total=0,danger=0,safe=0;
+    const res = await fetch("/api/analyze", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({text,email})
+    });
 
-function updateStats(){
-document.getElementById("total").innerText=total;
-document.getElementById("danger").innerText=danger;
-document.getElementById("safe").innerText=safe;
-}
+    const data = await res.json();
 
-// 🔥 ANALİZ
-async function analyze(){
-let text=document.getElementById("text").value;
-let email=document.getElementById("email").value;
+    alert("Risk: "+data.risk+"%");
 
-let r=await fetch("/api/analyze",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({text,email})
-});
+    location.reload();
+};
 
-let d=await r.json();
-addRow(text,d.risk);
-}
-
-// 🔥 TABLO
-function addRow(text,risk){
-total++;
-
-let color="#f39c12";
-let label="Şüpheli";
-
-if(risk>70){danger++;color="red";label="Tehlikeli";}
-else if(risk<40){safe++;color="#2ed573";label="Güvenli";}
-
-updateStats();
-
-let row= <tr> <td>${text.substring(0,30)}</td> <td><div class="progress-container"><div class="progress-bar" style="width:${risk}%;background:${color}"></div></div></td> <td>${label}</td> </tr>;
-
-document.getElementById("table").innerHTML=row+
-document.getElementById("table").innerHTML;
-}
-
-// 🔥 SOSYAL
+// sosyal medya yükle
 async function loadSocial(){
-let r=await fetch("/api/social");
-let data=await r.json();
+    let r = await fetch("/api/social");
+    let data = await r.json();
 
-data.forEach(p=>addRow(p.text,p.risk));
+    let tbody = document.querySelector("tbody");
+
+    data.forEach(p=>{
+        let icon="🌐";
+        if(p.platform==="twitter") icon="🐦";
+        if(p.platform==="instagram") icon="📸";
+        if(p.platform==="tiktok") icon="🎵";
+        if(p.platform==="facebook") icon="📘";
+
+        let row = `
+        <tr>
+            <td>${icon} ${p.text}</td>
+            <td>${p.risk}%</td>
+            <td>${p.risk>70?"⚠️":"✅"}</td>
+        </tr>`;
+
+        tbody.innerHTML += row;
+    });
 }
+
 loadSocial();
-
-// 🔥 VIDEO
-async function video(){
-let url=document.getElementById("video").value;
-
-let r=await fetch("/api/video",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({url})
-});
-
-let d=await r.json();
-alert("Deepfake Risk: "+d.score+"%");
-}
-
 </script>
 
 </body>
