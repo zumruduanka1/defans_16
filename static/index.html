@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html>
 <head>
 <meta charset="UTF-8">
 <title>DEFANS PRO</title>
@@ -13,80 +13,91 @@ body {
 
 h1 {
     font-size:40px;
-    margin-top:40px;
 }
 
 .box {
-    margin:20px auto;
     width:60%;
+    margin:auto;
 }
 
-textarea, input {
+textarea {
     width:100%;
-    padding:15px;
+    height:120px;
     border-radius:10px;
-    border:none;
-    margin-top:10px;
+    padding:15px;
 }
 
 button {
-    margin-top:20px;
-    padding:15px 30px;
+    margin-top:10px;
+    padding:12px 25px;
     border:none;
     border-radius:10px;
     background:linear-gradient(45deg,#4facfe,#00f2fe);
     color:white;
-    font-size:16px;
-    cursor:pointer;
-}
-
-.result {
-    margin-top:30px;
-    font-size:20px;
 }
 
 .card {
     display:inline-block;
     padding:20px;
-    margin:10px;
-    border-radius:15px;
     background:#111827;
+    margin:10px;
+    border-radius:10px;
+}
+
+.social {
+    margin-top:30px;
 }
 </style>
 </head>
 <body>
 
-<h1>DEFANS</h1>
+<h1>DEFANS PRO</h1>
 
 <div class="box">
-    <textarea id="text" placeholder="Metin gir..."></textarea>
-    <input id="url" placeholder="veya URL gir...">
-    <button onclick="analiz()">Analiz</button>
+<textarea id="text"></textarea>
+<br>
+<button onclick="analiz()">Analiz</button>
 </div>
 
-<div class="result">
-    <div class="card">Risk: <span id="risk">0</span></div>
-    <div class="card">Güven: <span id="guven">0</span></div>
-    <div id="yorum"></div>
+<div>
+<div class="card">Risk: <span id="risk">0</span></div>
+<div class="card">Güven: <span id="guven">0</span></div>
+</div>
+
+<div class="social">
+<h2>Sosyal Medya</h2>
+<div id="social"></div>
 </div>
 
 <script>
-async function analiz() {
+async function analiz(){
     let text = document.getElementById("text").value;
-    let url = document.getElementById("url").value;
 
-    let res = await fetch("/api/analyze", {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({text, url})
+    let res = await fetch("/api/analyze",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({text})
     });
 
     let data = await res.json();
 
-    document.getElementById("risk").innerText = data.risk || 0;
-    document.getElementById("guven").innerText = data.guven || 0;
-    document.getElementById("yorum").innerText = data.yorum || "";
+    document.getElementById("risk").innerText = data.risk;
+    document.getElementById("guven").innerText = data.guven;
 }
+
+async function loadSocial(){
+    let res = await fetch("/api/social");
+    let data = await res.json();
+
+    let html = "";
+    data.forEach(item=>{
+        html += `<div class="card">${item.text}<br>Risk: ${item.risk}</div>`;
+    });
+
+    document.getElementById("social").innerHTML = html;
+}
+
+loadSocial();
 </script>
 
 </body>

@@ -1,40 +1,65 @@
 from flask import Flask, request, jsonify, send_from_directory
 import os
 import requests
+import smtplib
+from email.mime.text import MIMEText
+import feedparser
 
 app = Flask(__name__, static_folder="static", static_url_path="")
 
-# 🧠 Basit ama stabil analiz
+# 📧 MAIL AYARLARI (GMAIL)
+EMAIL_SENDER = "seninmail@gmail.com"
+EMAIL_PASSWORD = "uygulama_sifresi"
+EMAIL_RECEIVERS = ["seninmail@gmail.com", "arkadas@gmail.com"]
+
+def send_mail(text, risk):
+    try:
+        msg = MIMEText(f"Riskli içerik bulundu:\n\n{text}\n\nRisk: {risk}")
+        msg["Subject"] = "⚠️ DEFANS UYARI"
+        msg["From"] = EMAIL_SENDER
+        msg["To"] = ", ".join(EMAIL_RECEIVERS)
+
+        server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
+        server.login(EMAIL_SENDER, EMAIL_PASSWORD)
+        server.sendmail(EMAIL_SENDER, EMAIL_RECEIVERS, msg.as_string())
+        server.quit()
+    except Exception as e:
+        print("Mail hatası:", e)
+
+# 🧠 ANALİZ
 def analyze_text(text):
-    if not text or len(text) < 20:
-        return {"risk": 0, "guven": 0, "yorum": "Metin çok kısa"}
+    if len(text) < 20:
+        return {"risk": 0, "guven": 0, "yorum": "çok kısa"}
 
-    text_lower = text.lower()
-
-    # 🚨 fake news keyword sistemi
     risk_words = [
-        "öldü", "savaş", "patlama", "son dakika", "skandal",
-        "ifşa", "şok", "gizli", "yasaklandı"
+        "öldü","patlama","savaş","son dakika",
+        "ifşa","şok","yasaklandı","skandal"
     ]
 
-    risk_score = sum(1 for w in risk_words if w in text_lower)
-
-    risk = min(risk_score * 20, 100)
+    score = sum(1 for w in risk_words if w in text.lower())
+    risk = min(score * 20, 100)
     guven = 100 - risk
 
-    return {
-        "risk": risk,
-        "guven": guven,
-        "yorum": "Analiz tamamlandı"
-    }
+    # 🚨 yüksek risk → mail at
+    if risk >= 60:
+        send_mail(text, risk)
 
-# 🌐 URL analiz
-def analyze_url(url):
-    try:
-        r = requests.get(url, timeout=5)
-        return analyze_text(r.text[:2000])
-    except:
-        return {"risk": 0, "guven": 0, "yorum": "URL okunamadı"}
+    return {"risk": risk, "guven": guven, "yorum": "analiz tamam"}
+
+# 🌐 SOSYAL MEDYA (RSS ile)
+def get_social_news():
+    feed = feedparser.parse("https://rss.app/feeds/twitter/elonmusk.rss")
+    results = []
+
+    for entry in feed.entries[:5]:
+        analiz = analyze_text(entry.title)
+        results.append({
+            "text": entry.title,
+            "risk": analiz["risk"],
+            "guven": analiz["guven"]
+        })
+
+    return results
 
 @app.route("/api/analyze", methods=["POST"])
 def analyze():
@@ -44,9 +69,17 @@ def analyze():
         return jsonify(analyze_text(data["text"]))
 
     if data.get("url"):
-        return jsonify(analyze_url(data["url"]))
+        try:
+            r = requests.get(data["url"])
+            return jsonify(analyze_text(r.text[:2000]))
+        except:
+            return jsonify({"error": "url okunamadı"})
 
     return jsonify({"error": "veri yok"})
+
+@app.route("/api/social")
+def social():
+    return jsonify(get_social_news())
 
 @app.route("/")
 def index():
