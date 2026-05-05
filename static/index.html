@@ -5,219 +5,124 @@
 <title>DEFANS PRO</title>
 
 <style>
-body {
+body{
   margin:0;
-  font-family: Arial;
-  background: radial-gradient(circle at top, #0f172a, #020617);
+  font-family:Arial;
+  background:linear-gradient(#020617,#0f172a);
   color:white;
   text-align:center;
 }
 
-.container {
-  margin-top:40px;
+.box{
+  margin-top:50px;
 }
 
-textarea {
+textarea{
   width:60%;
   height:120px;
   border-radius:12px;
   padding:10px;
-  border:none;
 }
 
-button {
-  margin:10px;
+button{
   padding:12px 20px;
-  border-radius:12px;
   border:none;
-  background:#0ea5e9;
+  border-radius:10px;
+  background:#6366f1;
   color:white;
-  cursor:pointer;
+  margin:10px;
 }
 
-.cards {
-  margin-top:30px;
-}
-
-.card {
+.card{
   display:inline-block;
   padding:20px;
   margin:10px;
   border-radius:15px;
-  border:1px solid rgba(255,255,255,0.1);
-  backdrop-filter: blur(10px);
-  box-shadow:0 0 20px rgba(0,255,200,0.2);
+  background:rgba(255,255,255,0.05);
 }
 
-.bar-container {
+.bar{
   width:60%;
-  margin:10px auto;
+  margin:auto;
   background:#111;
   border-radius:10px;
 }
 
-.bar {
+.fill{
   height:20px;
   width:0%;
   border-radius:10px;
-  transition:0.5s;
 }
 
-.risk { background:red; }
-.safe { background:green; }
-
-.section {
-  margin-top:40px;
-}
-
-.list-item {
-  margin:5px;
-  padding:10px;
-  border:1px solid rgba(255,255,255,0.1);
-  border-radius:10px;
-}
+.risk{background:red;}
+.safe{background:green;}
 </style>
 </head>
 
 <body>
 
-<div class="container">
+<h1>DEFANS</h1>
 
-<h1>DEFANS PRO</h1>
-
-<textarea id="text" placeholder="Metin gir..."></textarea><br>
-
+<div class="box">
+<textarea id="text" placeholder="Metin veya URL gir"></textarea><br>
 <button onclick="analyze()">Analiz</button>
-<button onclick="sendMail()">2 Maile Gönder</button>
 
-<div class="cards">
-  <div class="card">
-    <h3>Risk</h3>
-    <span id="riskValue">0</span>
-  </div>
-
-  <div class="card">
-    <h3>Güvenli</h3>
-    <span id="safeValue">0</span>
-  </div>
+<div>
+  <div class="card">Risk: <span id="risk">0</span></div>
+  <div class="card">Güvenli: <span id="safe">0</span></div>
 </div>
 
-<div class="bar-container">
-  <div id="riskBar" class="bar risk"></div>
-</div>
-
-<div class="bar-container">
-  <div id="safeBar" class="bar safe"></div>
-</div>
+<div class="bar"><div id="riskBar" class="fill risk"></div></div>
+<div class="bar"><div id="safeBar" class="fill safe"></div></div>
 
 </div>
 
-<!-- GEÇMİŞ -->
-<div class="section">
-<h2>Geçmiş Analizler</h2>
+<h2>Geçmiş</h2>
 <div id="history"></div>
-</div>
-
-<!-- HABER -->
-<div class="section">
-<h2>Gündem</h2>
-<div id="news"></div>
-</div>
-
-<!-- SOSYAL -->
-<div class="section">
-<h2>Sosyal Medya</h2>
-<div id="social"></div>
-</div>
 
 <script>
-
-// 🧠 ANALİZ
 async function analyze(){
   const text = document.getElementById("text").value;
 
-  const res = await fetch("/api/analyze", {
+  const res = await fetch("/api/analyze",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({text})
+    body:JSON.stringify({text})
   });
 
   const data = await res.json();
 
-  document.getElementById("riskValue").innerText = data.risk;
-  document.getElementById("safeValue").innerText = data.safe;
-
-  document.getElementById("riskBar").style.width = data.risk + "%";
-  document.getElementById("safeBar").style.width = data.safe + "%";
-
-  // ⚠️ uyarı
-  if(data.risk > 70){
-    alert("⚠️ Bu içerik yüksek riskli olabilir!");
+  if(data.error){
+    alert(data.error);
+    return;
   }
 
+  document.getElementById("risk").innerText=data.risk;
+  document.getElementById("safe").innerText=data.safe;
+
+  document.getElementById("riskBar").style.width=data.risk+"%";
+  document.getElementById("safeBar").style.width=data.safe+"%";
+
   loadHistory();
+
+  if(data.risk>70){
+    alert("⚠️ Riskli içerik!");
+  }
 }
 
-// 📧 MAIL
-async function sendMail(){
-  const text = document.getElementById("text").value;
-
-  const res = await fetch("/api/notify", {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({text})
-  });
-
-  const data = await res.json();
-  alert(data.status);
-}
-
-// 📜 GEÇMİŞ
 async function loadHistory(){
   const res = await fetch("/api/history");
   const data = await res.json();
 
-  const div = document.getElementById("history");
-  div.innerHTML = "";
-
-  data.forEach(h=>{
-    div.innerHTML += `<div class="list-item">${h.text} → Risk: ${h.risk}</div>`;
+  let html="";
+  data.forEach(x=>{
+    html+=`<div>${x.text} → ${x.risk}</div>`;
   });
+
+  document.getElementById("history").innerHTML=html;
 }
 
-// 📰 HABER
-async function loadNews(){
-  const res = await fetch("/api/news");
-  const data = await res.json();
-
-  const div = document.getElementById("news");
-  div.innerHTML = "";
-
-  data.forEach(n=>{
-    div.innerHTML += `<div class="list-item">
-      <a href="${n.url}" target="_blank">${n.title}</a>
-    </div>`;
-  });
-}
-
-// 🐦 SOSYAL
-async function loadSocial(){
-  const res = await fetch("/api/social");
-  const data = await res.json();
-
-  const div = document.getElementById("social");
-  div.innerHTML = "";
-
-  data.forEach(t=>{
-    div.innerHTML += `<div class="list-item">${t}</div>`;
-  });
-}
-
-// 🚀 LOAD
 loadHistory();
-loadNews();
-loadSocial();
-
 </script>
 
 </body>
