@@ -3,126 +3,90 @@
 <head>
 <meta charset="UTF-8">
 <title>DEFANS PRO</title>
-
 <style>
-body{
-  margin:0;
-  font-family:Arial;
-  background:linear-gradient(#020617,#0f172a);
-  color:white;
-  text-align:center;
+body {
+    background:#0b0f1a;
+    color:white;
+    font-family:sans-serif;
+    text-align:center;
 }
 
-.box{
-  margin-top:50px;
+h1 {
+    font-size:40px;
+    margin-top:40px;
 }
 
-textarea{
-  width:60%;
-  height:120px;
-  border-radius:12px;
-  padding:10px;
+.box {
+    margin:20px auto;
+    width:60%;
 }
 
-button{
-  padding:12px 20px;
-  border:none;
-  border-radius:10px;
-  background:#6366f1;
-  color:white;
-  margin:10px;
+textarea, input {
+    width:100%;
+    padding:15px;
+    border-radius:10px;
+    border:none;
+    margin-top:10px;
 }
 
-.card{
-  display:inline-block;
-  padding:20px;
-  margin:10px;
-  border-radius:15px;
-  background:rgba(255,255,255,0.05);
+button {
+    margin-top:20px;
+    padding:15px 30px;
+    border:none;
+    border-radius:10px;
+    background:linear-gradient(45deg,#4facfe,#00f2fe);
+    color:white;
+    font-size:16px;
+    cursor:pointer;
 }
 
-.bar{
-  width:60%;
-  margin:auto;
-  background:#111;
-  border-radius:10px;
+.result {
+    margin-top:30px;
+    font-size:20px;
 }
 
-.fill{
-  height:20px;
-  width:0%;
-  border-radius:10px;
+.card {
+    display:inline-block;
+    padding:20px;
+    margin:10px;
+    border-radius:15px;
+    background:#111827;
 }
-
-.risk{background:red;}
-.safe{background:green;}
 </style>
 </head>
-
 <body>
 
 <h1>DEFANS</h1>
 
 <div class="box">
-<textarea id="text" placeholder="Metin veya URL gir"></textarea><br>
-<button onclick="analyze()">Analiz</button>
-
-<div>
-  <div class="card">Risk: <span id="risk">0</span></div>
-  <div class="card">Güvenli: <span id="safe">0</span></div>
+    <textarea id="text" placeholder="Metin gir..."></textarea>
+    <input id="url" placeholder="veya URL gir...">
+    <button onclick="analiz()">Analiz</button>
 </div>
 
-<div class="bar"><div id="riskBar" class="fill risk"></div></div>
-<div class="bar"><div id="safeBar" class="fill safe"></div></div>
-
+<div class="result">
+    <div class="card">Risk: <span id="risk">0</span></div>
+    <div class="card">Güven: <span id="guven">0</span></div>
+    <div id="yorum"></div>
 </div>
-
-<h2>Geçmiş</h2>
-<div id="history"></div>
 
 <script>
-async function analyze(){
-  const text = document.getElementById("text").value;
+async function analiz() {
+    let text = document.getElementById("text").value;
+    let url = document.getElementById("url").value;
 
-  const res = await fetch("/api/analyze",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({text})
-  });
+    let res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({text, url})
+    });
 
-  const data = await res.json();
+    let data = await res.json();
 
-  if(data.error){
-    alert(data.error);
-    return;
-  }
-
-  document.getElementById("risk").innerText=data.risk;
-  document.getElementById("safe").innerText=data.safe;
-
-  document.getElementById("riskBar").style.width=data.risk+"%";
-  document.getElementById("safeBar").style.width=data.safe+"%";
-
-  loadHistory();
-
-  if(data.risk>70){
-    alert("⚠️ Riskli içerik!");
-  }
+    document.getElementById("risk").innerText = data.risk || 0;
+    document.getElementById("guven").innerText = data.guven || 0;
+    document.getElementById("yorum").innerText = data.yorum || "";
 }
-
-async function loadHistory(){
-  const res = await fetch("/api/history");
-  const data = await res.json();
-
-  let html="";
-  data.forEach(x=>{
-    html+=`<div>${x.text} → ${x.risk}</div>`;
-  });
-
-  document.getElementById("history").innerHTML=html;
-}
-
-loadHistory();
 </script>
 
 </body>
