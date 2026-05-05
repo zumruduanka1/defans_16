@@ -1,6 +1,6 @@
 flask
-gunicorn
 requests
 python-dotenv
-transformers
-torch
+gunicorn
+opencv-python-headless
+numpy

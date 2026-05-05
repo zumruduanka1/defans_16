@@ -1,33 +1,39 @@
-def analyze_content(text=None, url=None, image=None):
+import os, requests
+from dotenv import load_dotenv
+load_dotenv()
+
+HF_API = "https://api-inference.huggingface.co/models/facebook/bart-large-mnli"
+HF_KEY = os.getenv("HF_API_KEY")
+
+def analyze(text):
     if not text or len(text.split()) < 5:
-        return {"risk": 0, "status": "geçersiz"}
+        return {"score":0,"status":"geçersiz"}
 
-    risk = 0
-    reasons = []
+    try:
+        headers = {"Authorization": f"Bearer {HF_KEY}"}
+        payload = {
+            "inputs": text,
+            "parameters": {
+                "candidate_labels": ["fake news","real news"]
+            }
+        }
 
-    keywords = [
-        "şok", "ifşa", "gizli", "sızdırıldı",
-        "büyük olay", "son dakika", "yasaklandı"
-    ]
+        r = requests.post(HF_API, headers=headers, json=payload, timeout=8)
+        data = r.json()
 
-    for k in keywords:
-        if k in text.lower():
-            risk += 20
-            reasons.append(k)
+        label = data["labels"][0]
+        score = int(data["scores"][0] * 100)
 
-    if "http" in text:
-        risk += 10
+        if label == "fake news":
+            return {"score": score, "status": "riskli"}
+        else:
+            return {"score": score, "status": "güvenli"}
 
-    risk = min(risk, 100)
+    except:
+        score = 0
+        for k in ["şok","ifşa","gizli","son dakika"]:
+            if k in text.lower():
+                score += 25
 
-    status = "güvenli"
-    if risk > 70:
-        status = "tehlikeli"
-    elif risk > 40:
-        status = "şüpheli"
-
-    return {
-        "risk": risk,
-        "status": status,
-        "reasons": reasons
-    }
+        score = min(score,100)
+        return {"score":score,"status":"riskli" if score>60 else "güvenli"}
