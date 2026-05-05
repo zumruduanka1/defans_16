@@ -1,7 +1,9 @@
 import random
 
-def get_twitter_data():
+def get_social_posts():
     return [
-        {"text": "Şok karar açıklandı!", "risk": random.randint(40,90)},
-        {"text": "Gizli belge sızdırıldı", "risk": random.randint(50,100)}
+        {"platform": "twitter", "text": "Şok karar açıklandı!", "risk": random.randint(50,90)},
+        {"platform": "instagram", "text": "Gizli belge sızdırıldı", "risk": random.randint(60,100)},
+        {"platform": "tiktok", "text": "Büyük ifşa videosu", "risk": random.randint(40,80)},
+        {"platform": "facebook", "text": "Herkes bunu konuşuyor", "risk": random.randint(30,70)},
     ]

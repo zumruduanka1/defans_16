@@ -1,32 +1,22 @@
-import re
-
-def valid_text(text):
-    if not text:
-        return False
-    words = text.split()
-    return len(words) > 5
-
 def analyze_content(text=None, url=None, image=None):
+    if not text or len(text.split()) < 5:
+        return {"risk": 0, "status": "geçersiz"}
+
     risk = 0
     reasons = []
 
-    if text:
-        if not valid_text(text):
-            return {"risk": 0, "status": "geçersiz"}
+    keywords = [
+        "şok", "ifşa", "gizli", "sızdırıldı",
+        "büyük olay", "son dakika", "yasaklandı"
+    ]
 
-        keywords = ["şok", "ifşa", "gizli", "sızdırıldı"]
-        for k in keywords:
-            if k in text.lower():
-                risk += 25
-                reasons.append(k)
+    for k in keywords:
+        if k in text.lower():
+            risk += 20
+            reasons.append(k)
 
-    if url:
-        risk += 15
-        reasons.append("url içerik")
-
-    if image:
-        risk += 20
-        reasons.append("görsel içerik")
+    if "http" in text:
+        risk += 10
 
     risk = min(risk, 100)
 

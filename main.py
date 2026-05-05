@@ -1,42 +1,29 @@
 from flask import Flask, request, jsonify, send_from_directory
-import os
-from dotenv import load_dotenv
-
 from services.analyzer import analyze_content
-from services.social_fetcher import get_twitter_data
-from services.news_fetcher import get_news
+from services.social_fetcher import get_social_posts
 from services.mailer import send_mail
-
-load_dotenv()
+import os
 
 app = Flask(__name__, static_folder="static")
 
 @app.route("/")
-def home():
+def index():
     return send_from_directory("static", "index.html")
 
 @app.route("/api/analyze", methods=["POST"])
 def analyze():
     data = request.json
 
-    result = analyze_content(
-        text=data.get("text"),
-        url=data.get("url"),
-        image=data.get("image")
-    )
+    result = analyze_content(text=data.get("text"))
 
-    if result["risk"] > 75:
-        send_mail("⚠️ Riskli içerik", str(result))
+    if result["risk"] > 70:
+        send_mail("⚠️ Riskli içerik bulundu", str(data))
 
     return jsonify(result)
 
 @app.route("/api/social")
 def social():
-    return jsonify(get_twitter_data())
-
-@app.route("/api/news")
-def news():
-    return jsonify(get_news())
+    return jsonify(get_social_posts())
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
