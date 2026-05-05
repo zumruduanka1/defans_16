@@ -1,135 +1,136 @@
-import os
-import requests
-import smtplib
-from email.mime.text import MIMEText
 from flask import Flask, request, jsonify, send_from_directory
-import os
+import os, random, smtplib
+from email.mime.text import MIMEText
 
-app = Flask(__name__, static_folder=".", static_url_path="")
-
-@app.route("/")
-def index():
-    return send_from_directory(".", "index.html")
-
-# ENV
-TWITTER_BEARER = os.getenv("TWITTER_BEARER")
-HF_TOKEN = os.getenv("HF_TOKEN")
-EMAIL_USER = os.getenv("EMAIL_USER")
-EMAIL_PASS = os.getenv("EMAIL_PASS")
+app = Flask(__name__)
 
 # =========================
-# INDEX
+# ANA SAYFA
 # =========================
 @app.route("/")
 def home():
     return send_from_directory(".", "index.html")
 
-# =========================
-# MAIL
-# =========================
-def send_mail(text, score):
-    if not EMAIL_USER or not EMAIL_PASS:
-        return
-    try:
-        msg = MIMEText(f"Riskli içerik:\n\n{text}\n\nRisk: %{score}")
-        msg["Subject"] = "DEFANS PRO ALERT"
-        msg["From"] = EMAIL_USER
-        msg["To"] = EMAIL_USER
-
-        s = smtplib.SMTP("smtp.gmail.com", 587)
-        s.starttls()
-        s.login(EMAIL_USER, EMAIL_PASS)
-        s.send_message(msg)
-        s.quit()
-    except:
-        pass
 
 # =========================
-# AI ANALİZ
+# ANALİZ (AI SIMULATION)
 # =========================
 def analyze_text(text):
-    score = 10
-    keywords = ["şok","ifşa","gizli","bomba","sızdı"]
-    for k in keywords:
-        if k in text.lower():
-            score += 20
-    return min(score,100)
+    text = text.lower()
 
-@app.route("/api/analyze", methods=["POST"])
-def analyze():
-    text = request.json.get("text","")
-    score = analyze_text(text)
+    risk = 20
 
-    if score > 70:
-        send_mail(text, score)
+    if any(x in text for x in ["şok", "inanılmaz", "ifşa", "gizli", "yalan"]):
+        risk += 40
 
-    return jsonify({"score":score})
+    if "kaynak yok" in text or "iddia" in text:
+        risk += 20
+
+    risk += random.randint(0, 20)
+
+    status = "Tehlikeli" if risk > 70 else "Şüpheli" if risk > 40 else "Güvenli"
+
+    return risk, status
+
 
 # =========================
-# TWITTER (GERÇEK VERİ)
+# MAIL GÖNDER
+# =========================
+def send_mail(to_email, text, risk, status):
+    try:
+        user = os.getenv("EMAIL_USER")
+        password = os.getenv("EMAIL_PASS")
+
+        msg = MIMEText(f"""
+Yeni Riskli İçerik Tespit Edildi!
+
+İçerik:
+{text}
+
+Risk Skoru: %{risk}
+Durum: {status}
+""")
+
+        msg["Subject"] = "⚠️ DEFANS PRO UYARI"
+        msg["From"] = user
+        msg["To"] = to_email
+
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(user, password)
+        server.send_message(msg)
+        server.quit()
+
+    except Exception as e:
+        print("Mail hatası:", e)
+
+
+# =========================
+# API ANALYZE
+# =========================
+@app.route("/api/analyze", methods=["POST"])
+def analyze():
+    data = request.json
+    text = data.get("text", "")
+    email = data.get("email", "")
+
+    risk, status = analyze_text(text)
+
+    if risk > 70 and email:
+        send_mail(email, text, risk, status)
+
+    return jsonify({
+        "risk": risk,
+        "status": status
+    })
+
+
+# =========================
+# SOSYAL MEDYA (SIMULATED)
 # =========================
 @app.route("/api/social")
 def social():
+    posts = [
+        {"platform": "twitter", "text": "Şok gelişme! gizli belge sızdı"},
+        {"platform": "instagram", "text": "Yeni haber gündem oldu"},
+        {"platform": "tiktok", "text": "İnanılmaz gerçek ortaya çıktı"},
+        {"platform": "facebook", "text": "Bu bilgi doğru mu?"},
+    ]
 
-    posts = []
+    result = []
 
-    if TWITTER_BEARER:
-        try:
-            url = "https://api.twitter.com/2/tweets/search/recent"
-            headers = {"Authorization": f"Bearer {TWITTER_BEARER}"}
-            params = {"query":"gündem OR şok OR ifşa lang:tr","max_results":5}
+    for p in posts:
+        risk, status = analyze_text(p["text"])
 
-            r = requests.get(url, headers=headers, params=params)
-            data = r.json()
+        result.append({
+            "platform": p["platform"],
+            "text": p["text"],
+            "risk": risk,
+            "status": status
+        })
 
-            for t in data.get("data", []):
-                score = analyze_text(t["text"])
-                posts.append({
-                    "text": t["text"],
-                    "score": score,
-                    "platform":"twitter"
-                })
+    return jsonify(result)
 
-                if score > 70:
-                    send_mail(t["text"], score)
-
-        except Exception as e:
-            print(e)
-
-    return jsonify(posts)
 
 # =========================
-# DEEPFAKE
+# VIDEO ANALİZ (DEEPFAKE SIM)
 # =========================
-@app.route("/api/deepfake", methods=["POST"])
-def deepfake():
-    url = request.json.get("url")
+@app.route("/api/video", methods=["POST"])
+def video():
+    data = request.json
+    url = data.get("url")
 
-    try:
-        API_URL = "https://api-inference.huggingface.co/models/prithivMLmods/Deep-Fake-Detector"
-        headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-        r = requests.post(API_URL, headers=headers, json={"inputs": url})
-        result = r.json()
+    # fake deepfake detection
+    score = random.randint(10, 95)
 
-        score = int(result[0]["score"]*100)
-    except:
-        score = 50
-
-    return jsonify({"score":score})
-
-# =========================
-# DASHBOARD
-# =========================
-@app.route("/api/stats")
-def stats():
     return jsonify({
-        "total": 120,
-        "danger": 40,
-        "safe": 80
+        "score": score,
+        "status": "Deepfake olabilir" if score > 60 else "Temiz"
     })
 
+
 # =========================
-# RUN
+# SERVER
 # =========================
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
