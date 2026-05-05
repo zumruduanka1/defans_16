@@ -1,20 +1,24 @@
-import smtplib
+import smtplib, os
 from email.mime.text import MIMEText
 
-EMAIL = "tubitaktest0@gmail.com"
-PASSWORD = "cndmsduniivopskh"
+def send_mail(subject, body):
+    sender = os.getenv("EMAIL_USER")
+    password = os.getenv("EMAIL_PASS")
 
-TO = ["tubitaktest0@gmail.com", "rumeyysauslu@gmail.com"]
+    receivers = [
+        os.getenv("EMAIL_TO_1"),
+        os.getenv("EMAIL_TO_2")
+    ]
 
-def send_alert(text):
-    msg = MIMEText(f"Riskli içerik bulundu:\n\n{text}")
-    msg["Subject"] = "⚠️ DEFANS UYARI"
-    msg["From"] = EMAIL
-    msg["To"] = ", ".join(TO)
+    msg = MIMEText(body)
+    msg["Subject"] = subject
+    msg["From"] = sender
 
-    try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(EMAIL, PASSWORD)
-            server.sendmail(EMAIL, TO, msg.as_string())
-    except:
-        pass
+    server = smtplib.SMTP("smtp.gmail.com", 587)
+    server.starttls()
+    server.login(sender, password)
+
+    for r in receivers:
+        server.sendmail(sender, r, msg.as_string())
+
+    server.quit()

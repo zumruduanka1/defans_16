@@ -1,41 +1,43 @@
 import re
 
-def is_news_like(text):
-    patterns = [
-        r"https?://",  # URL
-        r"\b(şok|ifşa|son dakika|gizli|iddia)\b",
-        r"\b(video|görüntü|fotoğraf)\b",
-        r"\b(açıklandı|duyuruldu|ortaya çıktı)\b"
-    ]
+def valid_text(text):
+    if not text:
+        return False
+    words = text.split()
+    return len(words) > 5
 
-    for p in patterns:
-        if re.search(p, text.lower()):
-            return True
+def analyze_content(text=None, url=None, image=None):
+    risk = 0
+    reasons = []
 
-    return False
+    if text:
+        if not valid_text(text):
+            return {"risk": 0, "status": "geçersiz"}
 
+        keywords = ["şok", "ifşa", "gizli", "sızdırıldı"]
+        for k in keywords:
+            if k in text.lower():
+                risk += 25
+                reasons.append(k)
 
-def analyze_text(text):
-    text = text.strip().lower()
+    if url:
+        risk += 15
+        reasons.append("url içerik")
 
-    if len(text) < 15:
-        return {"risk": 0, "safe": 0, "label": "Geçersiz"}
+    if image:
+        risk += 20
+        reasons.append("görsel içerik")
 
-    # ❗ haber değilse analiz etme
-    if not is_news_like(text):
-        return {"risk": 0, "safe": 0, "label": "Haber değil"}
+    risk = min(risk, 100)
 
-    risk_keywords = [
-        "şok", "ifşa", "gizli", "skandal",
-        "herkes bunu konuşuyor",
-        "kanıtlandı", "büyük olay"
-    ]
+    status = "güvenli"
+    if risk > 70:
+        status = "tehlikeli"
+    elif risk > 40:
+        status = "şüpheli"
 
-    risk = sum(1 for k in risk_keywords if k in text)
-
-    if risk >= 2:
-        return {"risk": 85, "safe": 15, "label": "Yalan olabilir"}
-    elif risk == 1:
-        return {"risk": 50, "safe": 50, "label": "Şüpheli"}
-    else:
-        return {"risk": 15, "safe": 85, "label": "Düşük risk"}
+    return {
+        "risk": risk,
+        "status": status,
+        "reasons": reasons
+    }
