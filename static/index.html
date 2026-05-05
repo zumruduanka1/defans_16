@@ -1,104 +1,337 @@
 <!DOCTYPE html>
-<html>
+<html lang="tr">
 <head>
-<meta charset="UTF-8">
-<title>DEFANS PRO</title>
-<style>
-body {
-    background:#0b0f1a;
-    color:white;
-    font-family:sans-serif;
-    text-align:center;
-}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DEFANS PRO | Dezenformasyon Analiz Sistemi</title>
+    <!-- Google Fonts ve FontAwesome Ikonları -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-dark: #080a0f;
+            --card-bg: rgba(22, 27, 34, 0.6);
+            --border-color: #21262d;
+            --accent-purple: #7d5fff;
+            --accent-blue: #3d5afe;
+            --text-gray: #8b949e;
+            --danger: #ff4757;
+            --warning: #f39c12;
+            --success: #2ed573;
+        }
 
-h1 {
-    font-size:40px;
-}
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
-.box {
-    width:60%;
-    margin:auto;
-}
+        body {
+            background-color: var(--bg-dark);
+            background-image: radial-gradient(circle at top, #161b22 0%, #080a0f 100%);
+            color: #ffffff;
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            padding: 20px;
+        }
 
-textarea {
-    width:100%;
-    height:120px;
-    border-radius:10px;
-    padding:15px;
-}
+        /* Header / Navbar */
+        header {
+            max-width: 1200px;
+            margin: 0 auto 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+        }
 
-button {
-    margin-top:10px;
-    padding:12px 25px;
-    border:none;
-    border-radius:10px;
-    background:linear-gradient(45deg,#4facfe,#00f2fe);
-    color:white;
-}
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
 
-.card {
-    display:inline-block;
-    padding:20px;
-    background:#111827;
-    margin:10px;
-    border-radius:10px;
-}
+        .logo-box {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
 
-.social {
-    margin-top:30px;
-}
-</style>
+        .ai-badge {
+            font-size: 12px;
+            border: 1px solid #1f2937;
+            padding: 6px 16px;
+            border-radius: 20px;
+            color: #58a6ff;
+            background: rgba(56, 139, 253, 0.1);
+        }
+
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .hero h1 {
+            font-size: 64px;
+            font-weight: 800;
+            margin-bottom: 10px;
+            line-height: 1.1;
+        }
+
+        .hero p {
+            color: var(--text-gray);
+            max-width: 600px;
+            margin: 20px auto;
+            line-height: 1.6;
+            font-size: 15px;
+        }
+
+        /* Stats Row */
+        .stats-row {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 60px;
+        }
+
+        .stat-box {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            border-radius: 16px;
+            min-width: 160px;
+            text-align: center;
+        }
+
+        .stat-box h2 { font-size: 32px; margin-bottom: 4px; }
+        .stat-box span { font-size: 12px; color: var(--text-gray); }
+
+        /* Main Content Grid */
+        .grid-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-gray);
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Tabs */
+        .tabs {
+            background: #0d1117;
+            padding: 5px;
+            border-radius: 12px;
+            display: flex;
+            margin-bottom: 25px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            font-size: 13px;
+            cursor: pointer;
+            border-radius: 8px;
+            color: var(--text-gray);
+        }
+
+        .tab.active {
+            background: #21262d;
+            color: #fff;
+        }
+
+        /* Form */
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-size: 13px; color: var(--text-gray); margin-bottom: 8px; }
+        
+        input, textarea {
+            width: 100%;
+            background: #ebf1f9; /* Görseldeki açık renk input */
+            border: none;
+            border-radius: 12px;
+            padding: 14px;
+            font-size: 14px;
+            color: #1a1d23;
+            outline: none;
+        }
+
+        textarea { height: 120px; resize: none; }
+
+        .btn-main {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 14px;
+            background: linear-gradient(90deg, #4461f2, #7d5fff);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-size: 15px;
+            transition: transform 0.2s;
+        }
+
+        .btn-main:hover { transform: translateY(-2px); opacity: 0.9; }
+
+        /* Table Styles */
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; font-size: 12px; color: var(--text-gray); padding-bottom: 15px; font-weight: 400; }
+        td { padding: 15px 0; border-top: 1px solid var(--border-color); font-size: 13px; }
+
+        .progress-container {
+            width: 80px;
+            height: 6px;
+            background: #21262d;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-bar { height: 100%; border-radius: 10px; }
+
+        .status-pill {
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .pill-warning { background: rgba(243, 156, 18, 0.15); color: var(--warning); border: 1px solid var(--warning); }
+        .pill-success { background: rgba(46, 213, 115, 0.15); color: var(--success); border: 1px solid var(--success); }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .grid-container { grid-template-columns: 1fr; }
+            .hero h1 { font-size: 32px; }
+            .stats-row { flex-wrap: wrap; }
+        }
+    </style>
 </head>
 <body>
 
-<h1>DEFANS PRO</h1>
+    <header>
+        <div class="logo">
+            <div class="logo-box"><i class="fa-solid fa-shield-halved"></i></div>
+            DEFANS <span style="color:var(--accent-blue); margin-left:-5px;">PRO</span>
+        </div>
+        <div class="ai-badge">AI Powered</div>
+    </header>
 
-<div class="box">
-<textarea id="text"></textarea>
-<br>
-<button onclick="analiz()">Analiz</button>
-</div>
+    <section class="hero">
+        <h1>DEFANS</h1>
+        <h1 style="color: #fff; opacity: 0.9;">Dezenformasyon Erken Fark ve Analiz Sistemi</h1>
+        <p>Google Gemini AI ile haber ve içerikleri gerçek zamanlı analiz edin. Yalan haberleri, manipülasyonu ve dezenformasyonu anında tespit edin.</p>
+    </section>
 
-<div>
-<div class="card">Risk: <span id="risk">0</span></div>
-<div class="card">Güven: <span id="guven">0</span></div>
-</div>
+    <div class="stats-row">
+        <div class="stat-box">
+            <h2>4</h2>
+            <span>Toplam Analiz</span>
+        </div>
+        <div class="stat-box" style="border-color: rgba(255, 71, 87, 0.3);">
+            <h2 style="color: var(--danger);">0</h2>
+            <span>Tehlikeli İçerik</span>
+        </div>
+        <div class="stat-box" style="border-color: rgba(46, 213, 115, 0.3);">
+            <h2 style="color: var(--success);">1</h2>
+            <span>Güvenli İçerik</span>
+        </div>
+    </div>
 
-<div class="social">
-<h2>Sosyal Medya</h2>
-<div id="social"></div>
-</div>
+    <div class="grid-container">
+        <!-- Sol Panel: Yeni Analiz -->
+        <div class="card">
+            <div class="card-title"><i class="fa-solid fa-magnifying-glass" style="color:#58a6ff;"></i> YENİ ANALİZ</div>
+            
+            <div class="tabs">
+                <div class="tab active"><i class="fa-solid fa-file-lines"></i> Metin</div>
+                <div class="tab"><i class="fa-solid fa-link"></i> URL</div>
+                <div class="tab"><i class="fa-solid fa-image"></i> Görsel</div>
+            </div>
 
-<script>
-async function analiz(){
-    let text = document.getElementById("text").value;
+            <div class="form-group">
+                <label>E-posta Adresiniz</label>
+                <input type="email" value="omertayyip@gmail.com">
+            </div>
 
-    let res = await fetch("/api/analyze",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({text})
-    });
+            <div class="form-group">
+                <label>Analiz Edilecek Metin</label>
+                <textarea>Ellen DeGeneres Epstein dosyalarında "yamyam" olarak mı geçiyor?</textarea>
+            </div>
 
-    let data = await res.json();
+            <button class="btn-main">
+                <i class="fa-solid fa-magnifying-glass"></i> Yapay Zeka Analizi Başlat
+            </button>
+        </div>
 
-    document.getElementById("risk").innerText = data.risk;
-    document.getElementById("guven").innerText = data.guven;
-}
-
-async function loadSocial(){
-    let res = await fetch("/api/social");
-    let data = await res.json();
-
-    let html = "";
-    data.forEach(item=>{
-        html += `<div class="card">${item.text}<br>Risk: ${item.risk}</div>`;
-    });
-
-    document.getElementById("social").innerHTML = html;
-}
-
-loadSocial();
-</script>
+        <!-- Sağ Panel: Son Analizler -->
+        <div class="card">
+            <div class="card-title"><i class="fa-solid fa-chart-simple" style="color:#f39c12;"></i> SON ANALİZLER</div>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>İÇERİK</th>
+                        <th>PUAN</th>
+                        <th>DURUM</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="color: var(--text-gray);">https://x.com/ekremoku...</td>
+                        <td><div class="progress-container"><div class="progress-bar" style="width: 15%; background: #444;"></div></div></td>
+                        <td><span class="status-pill pill-warning">⚠️ Şüpheli</span></td>
+                    </tr>
+                    <tr>
+                        <td style="color: var(--text-gray);">https://x.com/ekremoku...</td>
+                        <td><div class="progress-container"><div class="progress-bar" style="width: 15%; background: #444;"></div></div></td>
+                        <td><span class="status-pill pill-warning">⚠️ Şüpheli</span></td>
+                    </tr>
+                    <tr>
+                        <td style="color: var(--text-gray);">'Kuleli Askeri Lisesi bina...</td>
+                        <td><div class="progress-container"><div class="progress-bar" style="width: 15%; background: #444;"></div></div></td>
+                        <td><span class="status-pill pill-warning">⚠️ Şüpheli</span></td>
+                    </tr>
+                    <tr>
+                        <td><span style="color:red;">●</span> İran Devrim Muhafızl...</td>
+                        <td><div class="progress-container"><div class="progress-bar" style="width: 100%; background: linear-gradient(90deg, #f39c12, #2ed573);"></div></div></td>
+                        <td><span class="status-pill pill-success">✅ Güvenli</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
 
 </body>
 </html>

@@ -1,90 +1,109 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, jsonify
 import os
-import requests
-import smtplib
-from email.mime.text import MIMEText
-import feedparser
+import sys
 
-app = Flask(__name__, static_folder="static", static_url_path="")
+# 🔧 path fix (import hatası çözüm)
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# 📧 MAIL AYARLARI (GMAIL)
-EMAIL_SENDER = "seninmail@gmail.com"
-EMAIL_PASSWORD = "uygulama_sifresi"
-EMAIL_RECEIVERS = ["seninmail@gmail.com", "arkadas@gmail.com"]
+from services.analyzer import analyze_text
+from services.social import get_social_data
+from services.mailer import send_alert
 
-def send_mail(text, risk):
-    try:
-        msg = MIMEText(f"Riskli içerik bulundu:\n\n{text}\n\nRisk: {risk}")
-        msg["Subject"] = "⚠️ DEFANS UYARI"
-        msg["From"] = EMAIL_SENDER
-        msg["To"] = ", ".join(EMAIL_RECEIVERS)
+app = Flask(__name__)
 
-        server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
-        server.login(EMAIL_SENDER, EMAIL_PASSWORD)
-        server.sendmail(EMAIL_SENDER, EMAIL_RECEIVERS, msg.as_string())
-        server.quit()
-    except Exception as e:
-        print("Mail hatası:", e)
+# basit hafıza (son analizler)
+history = []
 
-# 🧠 ANALİZ
-def analyze_text(text):
-    if len(text) < 20:
-        return {"risk": 0, "guven": 0, "yorum": "çok kısa"}
-
-    risk_words = [
-        "öldü","patlama","savaş","son dakika",
-        "ifşa","şok","yasaklandı","skandal"
-    ]
-
-    score = sum(1 for w in risk_words if w in text.lower())
-    risk = min(score * 20, 100)
-    guven = 100 - risk
-
-    # 🚨 yüksek risk → mail at
-    if risk >= 60:
-        send_mail(text, risk)
-
-    return {"risk": risk, "guven": guven, "yorum": "analiz tamam"}
-
-# 🌐 SOSYAL MEDYA (RSS ile)
-def get_social_news():
-    feed = feedparser.parse("https://rss.app/feeds/twitter/elonmusk.rss")
-    results = []
-
-    for entry in feed.entries[:5]:
-        analiz = analyze_text(entry.title)
-        results.append({
-            "text": entry.title,
-            "risk": analiz["risk"],
-            "guven": analiz["guven"]
-        })
-
-    return results
-
-@app.route("/api/analyze", methods=["POST"])
-def analyze():
-    data = request.json
-
-    if data.get("text"):
-        return jsonify(analyze_text(data["text"]))
-
-    if data.get("url"):
-        try:
-            r = requests.get(data["url"])
-            return jsonify(analyze_text(r.text[:2000]))
-        except:
-            return jsonify({"error": "url okunamadı"})
-
-    return jsonify({"error": "veri yok"})
-
-@app.route("/api/social")
-def social():
-    return jsonify(get_social_news())
-
+# 🏠 HOME
 @app.route("/")
-def index():
-    return send_from_directory("static", "index.html")
+def home():
+    return render_template("index.html")
 
+
+# 🧠 METİN ANALİZ
+@app.route("/analyze", methods=["POST"])
+def analyze():
+    data = request.get_json()
+    text = data.get("text", "").strip()
+
+    result = analyze_text(text)
+
+    history.append({
+        "text": text,
+        "risk": result["risk"],
+        "label": result["label"]
+    })
+
+    # 🚨 riskliyse mail
+    if result["risk"] >= 70:
+        send_alert(text)
+
+    return jsonify(result)
+
+
+# 🌐 URL ANALİZ
+@app.route("/analyze_url", methods=["POST"])
+def analyze_url():
+    data = request.get_json()
+    url = data.get("url", "").strip()
+
+    if not url:
+        return jsonify({"risk": 0, "safe": 0, "label": "URL yok"})
+
+    result = analyze_text(url)
+
+    history.append({
+        "text": url,
+        "risk": result["risk"],
+        "label": result["label"]
+    })
+
+    if result["risk"] >= 70:
+        send_alert(url)
+
+    return jsonify(result)
+
+
+# 🌍 SOSYAL MEDYA
+@app.route("/social")
+def social():
+    posts = get_social_data()
+
+    analyzed = []
+
+    for p in posts:
+        result = analyze_text(p["text"])
+
+        item = {
+            "platform": p.get("platform", "Unknown"),
+            "text": p.get("text", ""),
+            "url": p.get("url", "#"),
+            "risk": result["risk"],
+            "label": result["label"]
+        }
+
+        # 🚨 riskliyse mail
+        if result["risk"] >= 70:
+            send_alert(p["text"])
+
+        analyzed.append(item)
+
+    return jsonify(analyzed)
+
+
+# 📊 GEÇMİŞ
+@app.route("/history")
+def get_history():
+    return jsonify(history[-20:])  # son 20 kayıt
+
+
+# ❤️ HEALTH CHECK (Render için)
+@app.route("/health")
+def health():
+    return "OK"
+
+
+# 🚀 START
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
