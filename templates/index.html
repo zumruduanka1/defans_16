@@ -3,219 +3,227 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DEFANS PRO | Dezenformasyon Analiz Sistemi</title>
+
+<title>DEFANS PRO</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
 <style>
-:root {
-    --bg-dark:#080a0f;
-    --card-bg:rgba(22,27,34,0.6);
-    --border-color:#21262d;
-    --accent-purple:#7d5fff;
-    --accent-blue:#3d5afe;
-    --text-gray:#8b949e;
-    --danger:#ff4757;
-    --warning:#f39c12;
-    --success:#2ed573;
+:root{
+    --bg:#080a0f;
+    --card:#161b22;
+    --border:#21262d;
+    --text:#ffffff;
+    --gray:#8b949e;
 }
-
-*{box-sizing:border-box;margin:0;padding:0}
-
-<script src="app.js"></script>
 
 body{
-background: radial-gradient(circle at top,#161b22 0%,#080a0f 100%);
-color:#fff;
-font-family:'Inter',sans-serif;
-padding:20px;
+    background: radial-gradient(circle at top,#161b22,#080a0f);
+    color:var(--text);
+    font-family:'Inter';
+    padding:20px;
 }
 
+/* HEADER */
 header{
-max-width:1200px;margin:0 auto 60px;
-display:flex;justify-content:space-between;align-items:center;
+    display:flex;
+    justify-content:space-between;
+    margin-bottom:50px;
 }
 
-.logo{display:flex;gap:10px;font-weight:700;font-size:22px}
-.logo-box{
-background:linear-gradient(135deg,#3d5afe,#7d5fff);
-width:32px;height:32px;border-radius:8px;
-display:flex;align-items:center;justify-content:center;
+.logo{
+    font-size:22px;
+    font-weight:700;
 }
 
-.ai-badge{
-font-size:12px;border:1px solid #1f2937;
-padding:6px 16px;border-radius:20px;color:#58a6ff;
+/* HERO */
+.hero{
+    text-align:center;
+    margin-bottom:40px;
 }
 
-.hero{text-align:center;margin-bottom:50px}
-.hero h1{font-size:64px;font-weight:800}
-.hero p{color:#8b949e;margin-top:15px}
-
-.stats-row{
-display:flex;justify-content:center;gap:15px;margin-bottom:60px
+.hero h1{
+    font-size:50px;
 }
 
-.stat-box{
-background:var(--card-bg);
-border:1px solid var(--border-color);
-padding:20px;border-radius:16px;text-align:center;
+/* STATS */
+.stats{
+    display:flex;
+    justify-content:center;
+    gap:15px;
+    margin-bottom:40px;
 }
 
-.grid-container{
-display:grid;grid-template-columns:1fr 1fr;gap:30px;
-max-width:1100px;margin:auto;
+.stat{
+    background:var(--card);
+    border:1px solid var(--border);
+    padding:20px;
+    border-radius:12px;
+}
+
+/* GRID */
+.grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:20px;
 }
 
 .card{
-background:var(--card-bg);
-border:1px solid var(--border-color);
-border-radius:24px;padding:30px;
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:20px;
 }
 
-.tabs{display:flex;margin-bottom:20px}
-.tab{flex:1;padding:10px;text-align:center;color:#8b949e}
-.tab.active{background:#21262d;color:#fff;border-radius:8px}
-
+/* FORM */
 input,textarea{
-width:100%;padding:14px;border-radius:12px;
-background:#ebf1f9;border:none;margin-top:5px;
+    width:100%;
+    padding:12px;
+    border-radius:10px;
+    border:none;
+    background:#0d1117;
+    color:#fff;
+    margin-bottom:15px;
 }
 
-textarea{height:120px}
-
-.btn-main{
-width:100%;padding:16px;margin-top:10px;
-border:none;border-radius:14px;
-background:linear-gradient(90deg,#4461f2,#7d5fff);
-color:white;font-weight:600;cursor:pointer;
+button{
+    width:100%;
+    padding:15px;
+    border:none;
+    border-radius:10px;
+    background:linear-gradient(90deg,#4461f2,#7d5fff);
+    color:white;
+    cursor:pointer;
 }
 
-table{width:100%}
-td{padding:12px 0;border-top:1px solid #21262d}
+/* TABLE */
+table{
+    width:100%;
+}
 
-.progress-container{height:6px;background:#21262d;border-radius:10px}
-.progress-bar{height:100%}
+td{
+    padding:10px 0;
+    border-top:1px solid var(--border);
+}
 
-.pill-warning{color:#f39c12}
-.pill-success{color:#2ed573}
+.progress{
+    height:6px;
+    background:#222;
+    border-radius:10px;
+}
+
+.bar{
+    height:6px;
+    border-radius:10px;
+}
 </style>
 </head>
 
 <body>
 
 <header>
-<div class="logo">
-<div class="logo-box"><i class="fa-solid fa-shield-halved"></i></div>
-DEFANS <span style="color:#3d5afe">PRO</span>
-</div>
-<div class="ai-badge">AI Powered</div>
+<div class="logo">DEFANS PRO</div>
+<div>AI Powered</div>
 </header>
 
-<section class="hero">
+<div class="hero">
 <h1>DEFANS</h1>
-<h1 style="opacity:.9">Dezenformasyon Analiz Sistemi</h1>
-<p>Gerçek zamanlı sosyal medya + AI analiz</p>
-</section>
-
-<div class="stats-row">
-<div class="stat-box"><h2 id="total">0</h2><span>Analiz</span></div>
-<div class="stat-box"><h2 id="danger">0</h2><span>Riskli</span></div>
-<div class="stat-box"><h2 id="safe">0</h2><span>Güvenli</span></div>
+<h2>Dezenformasyon Analiz Sistemi</h2>
 </div>
 
-<div class="grid-container">
+<div class="stats">
+<div class="stat">0 Analiz</div>
+<div class="stat">0 Riskli</div>
+<div class="stat">0 Güvenli</div>
+</div>
 
+<div class="grid">
+
+<!-- SOL -->
 <div class="card">
-<div class="tabs">
-<div class="tab active">Metin</div>
-<div class="tab">URL</div>
-<div class="tab">Video</div>
-</div>
 
 <input id="email" placeholder="Mail">
 <textarea id="text" placeholder="Metin gir"></textarea>
 
-<button class="btn-main" onclick="analyze()">Analiz Başlat</button>
-
-<input id="video" placeholder="Video URL">
-<button class="btn-main" onclick="video()">🎥 Video Analiz</button>
+<button onclick="analyze()">Analiz Et</button>
 
 </div>
 
+<!-- SAĞ -->
 <div class="card">
+
 <table>
 <tbody id="table"></tbody>
 </table>
-</div>
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="app.js"></script>
-
-<canvas id="chart" style="max-width:400px;margin:auto;"></canvas>
+</div>
 
 <script>
-let chart;
+const table = document.getElementById("table");
 
-function updateChart(risk){
-    const ctx = document.getElementById("chart");
+/* ANALİZ */
+async function analyze(){
 
-    if(chart) chart.destroy();
+let text = document.getElementById("text").value;
 
-    chart = new Chart(ctx, {
-        type: "doughnut",
-        data: {
-            labels: ["Risk", "Güven"],
-            datasets: [{
-                data: [risk, 100-risk]
-            }]
-        }
-    });
+let r = await fetch("/api/analyze",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({text})
+});
+
+let d = await r.json();
+
+addRow(text,d.risk);
 }
-</script>
 
-<script>
+/* TABLOYA EKLE */
+function addRow(text,risk){
+
+let color="green";
+if(risk>70) color="red";
+else if(risk>40) color="orange";
+
+/* sosyal icon */
+let icon="🌐";
+if(text.includes("twitter")) icon="🐦";
+if(text.includes("instagram")) icon="📸";
+if(text.includes("tiktok")) icon="🎵";
+
+let row=`
+<tr>
+<td>${icon} ${text.substring(0,30)}</td>
+
+<td>
+<div class="progress">
+<div class="bar" style="width:${risk}%;background:${color}"></div>
+</div>
+<span style="font-size:12px;color:#8b949e">${risk}%</span>
+</td>
+
+<td>${risk>70?"⚠️ Şüpheli":"✅ Güvenli"}</td>
+</tr>
+`;
+
+table.innerHTML = row + table.innerHTML;
+}
+
+/* SOSYAL VERİ */
 async function loadSocial(){
-    try {
-        const res = await fetch("/api/social");
-        const data = await res.json();
 
-        const tbody = document.querySelector("tbody");
-        tbody.innerHTML = "";
+let r = await fetch("/api/social");
+let data = await r.json();
 
-        data.forEach(p => {
+data.forEach(p=>{
+addRow(p.text,p.risk);
+});
 
-            let color = "#2ed573";
-            if (p.risk > 70) color = "red";
-            else if (p.risk > 40) color = "orange";
-
-            const row = `
-            <tr>
-                <td>${p.text.substring(0,40)}</td>
-                <td>
-                    <div class="progress-container">
-                        <div class="progress-bar" style="width:${p.risk}%; background:${color}"></div>
-                    </div>
-                </td>
-                <td>${p.status}</td>
-            </tr>
-            `;
-
-            tbody.innerHTML += row;
-        });
-
-    } catch (e) {
-        console.log("HATA:", e);
-    }
 }
 
 loadSocial();
 </script>
-
-
 
 </body>
 </html>
