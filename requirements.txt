@@ -1,7 +1,5 @@
 flask
-flask-cors
-unicorn
-requests
-feedparser
-openai
 gunicorn
+joblib
+numpy
+scikit-learn
