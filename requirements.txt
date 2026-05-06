@@ -1,6 +1,7 @@
 flask
 flask-cors
-gunicorn
+unicorn
 requests
 feedparser
 openai
+gunicorn
