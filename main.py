@@ -3,9 +3,9 @@ from flask_cors import CORS
 import os, requests, random
 import feedparser
 from openai import OpenAI
-import joblib
-
-model = joblib.load("fake_news_model.pkl")
+import os
+model_path = os.path.join(os.path.dirname(__file__), "model.pkl")
+model = joblib.load(model_path)
 
 def ml_analyze(text):
     prob = model.predict_proba([text])[0][1]  # fake olasılığı
