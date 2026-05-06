@@ -177,6 +177,45 @@ function updateChart(risk){
 }
 </script>
 
+<script>
+async function loadSocial(){
+    try {
+        const res = await fetch("/api/social");
+        const data = await res.json();
+
+        const tbody = document.querySelector("tbody");
+        tbody.innerHTML = "";
+
+        data.forEach(p => {
+
+            let color = "#2ed573";
+            if (p.risk > 70) color = "red";
+            else if (p.risk > 40) color = "orange";
+
+            const row = `
+            <tr>
+                <td>${p.text.substring(0,40)}</td>
+                <td>
+                    <div class="progress-container">
+                        <div class="progress-bar" style="width:${p.risk}%; background:${color}"></div>
+                    </div>
+                </td>
+                <td>${p.status}</td>
+            </tr>
+            `;
+
+            tbody.innerHTML += row;
+        });
+
+    } catch (e) {
+        console.log("HATA:", e);
+    }
+}
+
+loadSocial();
+</script>
+
+
 
 </body>
 </html>

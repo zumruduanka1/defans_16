@@ -1,158 +1,78 @@
-import os
-import random
-import requests
 from flask import Flask, request, jsonify, render_template
-from dotenv import load_dotenv
-import smtplib
-from email.mime.text import MIMEText
-
-load_dotenv()
+from flask_cors import CORS
+import random
+import os
 
 app = Flask(__name__, template_folder="templates")
+CORS(app)
 
-# ======================
-# HOME
-# ======================
+# Ana sayfa
 @app.route("/")
 def home():
     return render_template("index.html")
 
-# ======================
-# VALIDATION
-# ======================
-def is_valid(text):
-    return text and len(text) > 10
-
-# ======================
-# 🔥 AI (FAKE NEWS ANALYZER)
-# ======================
-def analyze_ai(text):
-    risk = 20
-
-    high = ["şok","öldü","ifşa","komplo","gizli","yasak","skandal","sızdırıldı"]
-    medium = ["iddia","kriz","gündem"]
-
-    for w in high:
-        if w in text.lower():
-            risk += 30
-
-    for w in medium:
-        if w in text.lower():
-            risk += 15
-
-    risk += random.randint(10,25)
-
-    return min(risk,100)
-
-# ======================
-# ANALYZE
-# ======================
+# AI ANALİZ
 @app.route("/api/analyze", methods=["POST"])
 def analyze():
     data = request.json
-    text = data.get("text","")
-    email = data.get("email","")
+    text = data.get("text", "")
 
-    if not is_valid(text):
-        return jsonify({"risk":0,"status":"Geçersiz"})
+    # Fake AI ama mantıklı
+    risk = random.randint(10, 90)
 
-    risk = analyze_ai(text)
+    if any(x in text.lower() for x in ["öldü", "saldırı", "epstein", "yamyam"]):
+        risk = random.randint(60, 95)
 
+    status = "Güvenli"
     if risk > 70:
         status = "Tehlikeli"
-    elif risk < 40:
-        status = "Güvenli"
-    else:
+    elif risk > 40:
         status = "Şüpheli"
 
-    if email:
-        send_mail(email,text,risk,status)
+    return jsonify({
+        "risk": risk,
+        "status": status
+    })
 
-    return jsonify({"risk":risk,"status":status})
 
-# ======================
-# 🔥 SOSYAL MEDYA (GERÇEK + FALLBACK)
-# ======================
+# 🔥 SOSYAL MEDYA VERİSİ (ASLA BOŞ DÖNMEZ)
 @app.route("/api/social")
 def social():
-    posts = []
 
-    try:
-        import xml.etree.ElementTree as ET
-
-        r = requests.get("http://rss.cnn.com/rss/edition.rss", timeout=5)
-        root = ET.fromstring(r.content)
-
-        for item in root.findall(".//item")[:10]:
-            title = item.find("title").text
-
-            risk = analyze_ai(title)
-
-            if risk > 60:
-                posts.append({
-                    "platform": "news",
-                    "text": title,
-                    "risk": risk
-                })
-
-    except Exception as e:
-        print("RSS ERROR:", e)
-
-    # 🔥 HER ZAMAN GÖRÜNEN SOSYAL VERİ
-    extra = [
-        {"platform":"twitter","text":"Şok iddia gündemde","risk":85},
-        {"platform":"instagram","text":"Ünlü kişi öldü deniyor","risk":75},
-        {"platform":"tiktok","text":"Video kaldırılıyor","risk":70},
-        {"platform":"facebook","text":"Gizli bilgi sızdırıldı","risk":80},
+    fake_data = [
+        {"text": "Ünlü iş insanı öldü iddiası sosyal medyada yayıldı", "risk": 82},
+        {"text": "Yeni teknoloji haberi paylaşıldı", "risk": 25},
+        {"text": "Seçim sonuçları manipüle edildi iddiası", "risk": 78},
+        {"text": "Bilim insanları yeni keşif yaptı", "risk": 15},
+        {"text": "Ünlüler gizli listeye dahil edildi iddiası", "risk": 88},
     ]
 
-    posts += extra
+    result = []
+    for item in fake_data:
+        status = "Güvenli"
+        if item["risk"] > 70:
+            status = "⚠️ Şüpheli"
+        elif item["risk"] > 40:
+            status = "⚠️ Orta Risk"
 
-    if not posts:
-        posts = extra
+        result.append({
+            "text": item["text"],
+            "risk": item["risk"],
+            "status": status
+        })
 
-    return jsonify(posts)
+    return jsonify(result)
 
-# ======================
-# 🎥 VIDEO
-# ======================
+
+# Video analizi
 @app.route("/api/video", methods=["POST"])
 def video():
-    return jsonify({"score": random.randint(40,90)})
+    return jsonify({
+        "score": random.randint(20, 95)
+    })
 
-# ======================
-# 📧 MAIL
-# ======================
-def send_mail(to_email,text,risk,status):
-    user = os.getenv("MAIL_USER")
-    pwd = os.getenv("MAIL_PASS")
 
-    if not user or not pwd:
-        return
-
-    msg = MIMEText(f"""
-DEFANS PRO SONUÇ
-
-Metin:
-{text}
-
-Risk: %{risk}
-Durum: {status}
-""")
-
-    msg["Subject"] = "DEFANS PRO UYARI"
-    msg["From"] = user
-    msg["To"] = to_email
-
-    s = smtplib.SMTP("smtp.gmail.com",587)
-    s.starttls()
-    s.login(user,pwd)
-    s.send_message(msg)
-    s.quit()
-
-# ======================
-# RUN
-# ======================
+# Render için
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT",10000))
+    port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
