@@ -4,7 +4,4 @@ flask-socketio
 eventlet
 openai
 requests
-joblib
-numpy
-scikit-learn
-pillow
+gunicorn
