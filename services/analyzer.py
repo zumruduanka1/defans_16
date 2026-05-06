@@ -1,54 +1,40 @@
-import os, requests
-from dotenv import load_dotenv
-load_dotenv()
+@app.route("/analyze", methods=["POST"])
+def analyze():
+    ip = request.remote_addr
 
-HF_API = "https://api-inference.huggingface.co/models/facebook/bart-large-mnli"
-HF_KEY = os.getenv("HF_API_KEY")
+    if not rate(ip):
+        return jsonify({"error":"rate limit"}),429
 
-def ai_analyze(text):
-    if client is None:
-        return random.randint(30, 80)
+    data = request.get_json(silent=True) or {}
+    text = data.get("text","")
 
-    try:
-        res = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{
-                "role": "system",
-                "content": """
-Sen bir sosyal medya dezenformasyon analiz AI’sısın.
-Sadece şunu yap:
-- URL, video, görsel, metin analiz et
-- 0-100 risk ver
-- sadece sayı döndür
-"""
-            },{
-                "role": "user",
-                "content": text
-            }]
-        )
+    if not text:
+        return jsonify({"error":"no text"}),400
 
-        return int(''.join(filter(str.isdigit, res.choices[0].message.content)))
+    # filtre
+    if not is_social(text):
+        return jsonify({
+            "risk": 0,
+            "why": "Sosyal medya / haber içeriği tespit edilmedi"
+        })
 
-    except:
-        return random.randint(30, 80)
-        }
+    # AI skor
+    risk = ai_score(text)
+    why = explain(text)
 
-        r = requests.post(HF_API, headers=headers, json=payload, timeout=8)
-        data = r.json()
+    result = {
+        "text": text,
+        "risk": risk,
+        "why": why
+    }
 
-        label = data["labels"][0]
-        score = int(data["scores"][0] * 100)
+    logs.append(result)
+    if len(logs) > 50:
+        logs.pop(0)
 
-        if label == "fake news":
-            return {"score": score, "status": "riskli"}
-        else:
-            return {"score": score, "status": "güvenli"}
+    socketio.emit("live", result)
 
-    except:
-        score = 0
-        for k in ["şok","ifşa","gizli","son dakika"]:
-            if k in text.lower():
-                score += 25
+    if risk >= 70:
+        socketio.emit("alert", result)
 
-        score = min(score,100)
-        return {"score":score,"status":"riskli" if score>60 else "güvenli"}
+    return jsonify(result)

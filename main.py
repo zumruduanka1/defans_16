@@ -10,7 +10,7 @@ from openai import OpenAI
 app = Flask(__name__)
 CORS(app)
 
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) if os.getenv("OPENAI_API_KEY") else None
 
@@ -25,7 +25,23 @@ def rate(ip):
     return True
 
 def is_social(t):
-    return any(x in t.lower() for x in ["http","x.com","instagram","tiktok","youtube"])
+    if not t:
+        return False
+
+    t = t.lower()
+
+    allowed = [
+        "http",
+        "x.com",
+        "instagram",
+        "tiktok",
+        "youtube",
+        "facebook",
+        "haber",
+        "news"
+    ]
+
+    return any(x in t for x in allowed)
 
 def ai_score(text):
     if not client:
