@@ -170,68 +170,30 @@
 </div>
 
 <script>
-const socket = io();
-
-document.querySelector(".btn-main").onclick = async () => {
-
-    const text = document.getElementById("textInput").value;
-
-    const res = await fetch("/analyze",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({text})
-    });
-
-    const data = await res.json();
-
-    document.getElementById("resultBox").innerHTML =
-        `<b>Risk:</b> ${data.risk}%<br>${data.why || ""}`;
-};
-
-socket.on("live",(d)=>{
-
-    const tr = document.createElement("tr");
-
-    tr.innerHTML = `
-    <td>${d.text.slice(0,30)}</td>
-    <td>
-        <div class="progress-container">
-            <div class="progress-bar" style="width:${d.risk}%; background:#7d5fff"></div>
-        </div>
-    </td>
-    <td>${d.risk}%</td>
-    `;
-
-    document.getElementById("logTable").prepend(tr);
-});
-
-socket.on("alert",(d)=>{
-    alert("⚠ Riskli içerik: " + d.text.slice(0,50));
-});
-</script>
-
-<script>
 document.addEventListener("DOMContentLoaded", () => {
 
     const btn = document.querySelector(".btn-main");
 
-    if (!btn) {
-        console.error("BUTON BULUNAMADI");
+    if(!btn){
+        console.error("BUTON YOK");
         return;
     }
 
-    btn.addEventListener("click", async () => {
+    btn.onclick = async () => {
 
         const text = document.querySelector("textarea").value;
 
         console.log("SEND:", text);
 
+        if(!text){
+            alert("Boş");
+            return;
+        }
+
         try {
             const res = await fetch("/analyze", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
+                headers: {"Content-Type":"application/json"},
                 body: JSON.stringify({ text })
             });
 
@@ -240,13 +202,12 @@ document.addEventListener("DOMContentLoaded", () => {
             console.log("RESPONSE:", data);
 
             document.getElementById("resultBox").innerHTML =
-                "Risk: " + data.risk + "%<br>" + (data.why || "");
+                `Risk: ${data.risk}%<br>${data.why || ""}`;
 
-        } catch (err) {
-            console.error("FETCH ERROR:", err);
+        } catch (e) {
+            console.error("HATA:", e);
         }
-
-    });
+    };
 
 });
 </script>

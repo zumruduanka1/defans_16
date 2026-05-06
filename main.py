@@ -73,11 +73,11 @@ def explain(text):
     except:
         return "Açıklama yok"
 
-@app.route("/analyze", methods=["POST"])
-def analyze():
-    ip = request.remote_addr
-    if not rate(ip):
-        return jsonify({"error":"rate limit"}),429
+fetch("/analyze", {
+  method:"POST",
+  headers:{"Content-Type":"application/json"},
+  body:JSON.stringify({text:"test"})
+}).then(r=>r.json()).then(console.log)
 
     text = request.json.get("text","")
 
