@@ -3,6 +3,11 @@ from flask_cors import CORS
 import os, requests, random
 import feedparser
 from openai import OpenAI
+from flask import Flask
+from flask_cors import CORS
+
+app = Flask(__name__)
+CORS(app)
 import os
 model_path = os.path.join(os.path.dirname(__file__), "model.pkl")
 model = joblib.load(model_path)
