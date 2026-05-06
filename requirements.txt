@@ -1,9 +1,10 @@
 flask
-gunicorn
 flask-cors
+flask-socketio
+eventlet
+openai
+requests
 joblib
 numpy
 scikit-learn
-requests
-feedparser
-openai
+pillow

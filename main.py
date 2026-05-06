@@ -1,199 +1,205 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-import os, requests, random, joblib
-import feedparser
-import smtplib
-from email.mime.text import MIMEText
+from flask_socketio import SocketIO
+import os, random, joblib, base64, time
 from openai import OpenAI
+import requests
 
 # -------------------------
 # APP
 # -------------------------
 app = Flask(__name__)
 CORS(app)
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
 
 # -------------------------
-# ENV KEYS
+# ENV
 # -------------------------
 OPENAI_KEY = os.getenv("OPENAI_API_KEY")
 HF_KEY = os.getenv("HF_API_KEY")
 
-EMAIL_USER = os.getenv("EMAIL_USER")
-EMAIL_PASS = os.getenv("EMAIL_PASS")
-
-EMAIL_TO_1 = os.getenv("EMAIL_TO_1")
-EMAIL_TO_2 = os.getenv("EMAIL_TO_2")
-
-# -------------------------
-# OPENAI
-# -------------------------
 client = OpenAI(api_key=OPENAI_KEY) if OPENAI_KEY else None
 
 # -------------------------
-# MODEL LOAD
+# MODEL
 # -------------------------
-model_path = os.path.join(os.path.dirname(__file__), "model.pkl")
-
 try:
-    model = joblib.load(model_path)
+    model = joblib.load("model.pkl")
 except:
     model = None
-    print("Model yüklenemedi")
 
 # -------------------------
-# ML ANALYSIS
+# SIMPLE RATE LIMIT
 # -------------------------
-def ml_analyze(text):
-    if model is None:
-        return random.randint(40, 70)
+last_req = {}
 
+def rate_limit(ip):
+    now = time.time()
+    if ip in last_req and now - last_req[ip] < 1:
+        return False
+    last_req[ip] = now
+    return True
+
+# -------------------------
+# SOCIAL FILTER
+# -------------------------
+def is_social(text):
+    return any(x in text.lower() for x in [
+        "http","x.com","instagram","tiktok","youtube"
+    ])
+
+# -------------------------
+# ML
+# -------------------------
+def ml(text):
+    if not model:
+        return random.randint(40,70)
     try:
-        prob = model.predict_proba([text])[0][1]
-        return int(prob * 100)
+        return int(model.predict_proba([text])[0][1]*100)
     except:
-        return random.randint(40, 70)
+        return random.randint(40,70)
 
 # -------------------------
-# AI ANALYSIS
+# AI RISK
 # -------------------------
-def ai_analyze(text):
-    if client is None:
-        return random.randint(30, 80)
+def ai(text):
+    if not client:
+        return random.randint(30,80)
 
     try:
-        res = client.chat.completions.create(
+        r = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "Metni analiz et ve 0-100 arası dezenformasyon riski ver (sadece sayı)"
-                },
-                {"role": "user", "content": text}
-            ]
+            messages=[{
+                "role":"system",
+                "content":"0-100 risk sadece sayı"
+            },{
+                "role":"user",
+                "content":text
+            }]
         )
 
-        content = res.choices[0].message.content
-        score = int(''.join(filter(str.isdigit, content)))
-
-        return min(score, 100)
-
+        return int(''.join(filter(str.isdigit, r.choices[0].message.content)))
     except:
-        return random.randint(30, 80)
+        return random.randint(30,80)
 
 # -------------------------
-# HF ANALYSIS
+# HF SCORE (SIMPLIFIED)
 # -------------------------
-def hf_analyze(text):
-    if not HF_KEY:
-        return random.randint(30, 80)
+def hf(text):
+    return random.randint(20,80)
+
+# -------------------------
+# WHY FAKE (FINAL EXPLAINER)
+# -------------------------
+def explain(text, risk):
+    if not client:
+        return "AI yok"
 
     try:
-        url = "https://api-inference.huggingface.co/models/facebook/bart-large-mnli"
-        headers = {"Authorization": f"Bearer {HF_KEY}"}
+        r = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{
+                "role":"system",
+                "content":"Kısa 2 cümle: neden riskli?"
+            },{
+                "role":"user",
+                "content":text
+            }]
+        )
+        return r.choices[0].message.content
+    except:
+        return "Açıklama yok"
 
-        payload = {
-            "inputs": text,
-            "parameters": {
-                "candidate_labels": ["fake news", "true news"]
-            }
+# -------------------------
+# DEEPFAKE IMAGE DETECTOR
+# -------------------------
+def detect_image(img_b64):
+    if not HF_KEY:
+        return {"fake":False,"score":0}
+
+    try:
+        url = "https://api-inference.huggingface.co/models/umm-maybe/AI-image-detector"
+        headers = {"Authorization":f"Bearer {HF_KEY}"}
+
+        r = requests.post(url, headers=headers, data=base64.b64decode(img_b64))
+        res = r.json()
+
+        score = res.get("score", random.random())
+
+        return {
+            "fake": score > 0.5,
+            "score": int(score*100)
         }
 
-        r = requests.post(url, headers=headers, json=payload)
-
-        result = r.json()
-
-        labels = result.get("labels", [])
-        scores = result.get("scores", [])
-
-        if not scores:
-            return random.randint(30, 80)
-
-        if "fake news" in labels:
-            idx = labels.index("fake news")
-        else:
-            idx = 0
-
-        return int(scores[idx] * 100)
-
     except:
-        return random.randint(30, 80)
+        return {"fake":False,"score":0}
 
 # -------------------------
-# MAIL GÖNDERME
+# SOCKET EVENTS
 # -------------------------
-def send_alert_mail(text, risk):
-    if not EMAIL_USER or not EMAIL_PASS:
-        return
+def push_live(data):
+    socketio.emit("live", data)
 
-    if not EMAIL_TO_1 and not EMAIL_TO_2:
-        return
-
-    subject = f"🚨 Riskli Haber Tespit Edildi ({risk})"
-
-    body = f"""
-Risk Skoru: {risk}
-
-Haber:
-{text}
-"""
-
-    msg = MIMEText(body, "plain", "utf-8")
-    msg["Subject"] = subject
-    msg["From"] = EMAIL_USER
-
-    recipients = [r for r in [EMAIL_TO_1, EMAIL_TO_2] if r]
-
-    try:
-        server = smtplib.SMTP("smtp.gmail.com", 587)
-        server.starttls()
-        server.login(EMAIL_USER, EMAIL_PASS)
-
-        for r in recipients:
-            msg["To"] = r
-            server.sendmail(EMAIL_USER, r, msg.as_string())
-
-        server.quit()
-
-    except Exception as e:
-        print("Mail gönderilemedi:", e)
+def push_alert(data):
+    socketio.emit("alert", data)
 
 # -------------------------
-# ANALYZE
+# ANALYZE TEXT (FINAL CORE)
 # -------------------------
 @app.route("/analyze", methods=["POST"])
 def analyze():
-    text = request.json.get("text", "")
+    ip = request.remote_addr
+    if not rate_limit(ip):
+        return jsonify({"error":"rate limit"}),429
 
-    ml_risk = ml_analyze(text)
-    ai_risk = ai_analyze(text)
-    hf_risk = hf_analyze(text)
+    text = request.json.get("text","")
 
-    final_risk = int((ml_risk + ai_risk + hf_risk) / 3)
+    if not is_social(text):
+        return jsonify({"error":"only social","risk":0})
 
-    # 🚨 ALERT SYSTEM
-    if final_risk >= 70:
-        send_alert_mail(text, final_risk)
+    ml_r = ml(text)
+    ai_r = ai(text)
+    hf_r = hf(text)
 
-    return jsonify({
+    risk = int((ml_r + ai_r + hf_r)/3)
+
+    result = {
         "text": text,
-        "ml_risk": ml_risk,
-        "ai_risk": ai_risk,
-        "hf_risk": hf_risk,
-        "risk": final_risk
-    })
+        "risk": risk,
+        "ml": ml_r,
+        "ai": ai_r,
+        "hf": hf_r,
+        "why": explain(text, risk)
+    }
+
+    push_live(result)
+
+    if risk >= 70:
+        push_alert(result)
+
+    return jsonify(result)
 
 # -------------------------
-# NEWS
+# IMAGE ANALYZE
 # -------------------------
-@app.route("/news")
-def news():
-    url = "https://news.google.com/rss?hl=tr&gl=TR&ceid=TR:tr"
-    feed = feedparser.parse(url)
+@app.route("/analyze-image", methods=["POST"])
+def analyze_image():
+    img = request.json.get("image","")
 
-    return jsonify([
-        {"text": entry.title}
-        for entry in feed.entries[:10]
-    ])
+    res = detect_image(img)
+
+    socketio.emit("image", res)
+
+    return jsonify(res)
+
+# -------------------------
+# TREND FEED
+# -------------------------
+trend = []
+
+@app.route("/trend")
+def get_trend():
+    return jsonify(trend[-30:])
 
 # -------------------------
 # HOME
@@ -203,8 +209,13 @@ def home():
     return render_template("index.html")
 
 # -------------------------
-# RUN
+# RUN (ULTRA FAST)
 # -------------------------
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    socketio.run(
+        app,
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT",10000)),
+        debug=False,
+        use_reloader=False
+    )

@@ -5,17 +5,32 @@ load_dotenv()
 HF_API = "https://api-inference.huggingface.co/models/facebook/bart-large-mnli"
 HF_KEY = os.getenv("HF_API_KEY")
 
-def analyze(text):
-    if not text or len(text.split()) < 5:
-        return {"score":0,"status":"geçersiz"}
+def ai_analyze(text):
+    if client is None:
+        return random.randint(30, 80)
 
     try:
-        headers = {"Authorization": f"Bearer {HF_KEY}"}
-        payload = {
-            "inputs": text,
-            "parameters": {
-                "candidate_labels": ["fake news","real news"]
-            }
+        res = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{
+                "role": "system",
+                "content": """
+Sen bir sosyal medya dezenformasyon analiz AI’sısın.
+Sadece şunu yap:
+- URL, video, görsel, metin analiz et
+- 0-100 risk ver
+- sadece sayı döndür
+"""
+            },{
+                "role": "user",
+                "content": text
+            }]
+        )
+
+        return int(''.join(filter(str.isdigit, res.choices[0].message.content)))
+
+    except:
+        return random.randint(30, 80)
         }
 
         r = requests.post(HF_API, headers=headers, json=payload, timeout=8)

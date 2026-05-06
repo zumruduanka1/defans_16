@@ -262,6 +262,32 @@ btn.onclick = async () => {
 
     btn.innerHTML = "Analiz Et";
 };
+
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+<script>
+const socket = io();
+
+/* LIVE FEED */
+socket.on("live",(d)=>{
+    console.log("LIVE:",d);
+});
+
+/* ALERT */
+socket.on("alert",(d)=>{
+    if(Notification.permission !== "granted"){
+        Notification.requestPermission();
+    }
+
+    new Notification("⚠ Riskli içerik",{
+        body: d.text.slice(0,100)
+    });
+});
+
+/* IMAGE */
+socket.on("image",(d)=>{
+    console.log("IMAGE:",d);
+});
 </script>
 
 </body>
