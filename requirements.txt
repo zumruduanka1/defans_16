@@ -4,3 +4,6 @@ flask-cors
 joblib
 numpy
 scikit-learn
+requests
+feedparser
+openai

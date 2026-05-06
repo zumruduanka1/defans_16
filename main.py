@@ -1,75 +1,104 @@
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
-import os, requests, random
+import os, requests, random, joblib
 import feedparser
 from openai import OpenAI
-from flask import Flask
-from flask_cors import CORS
 
+# -------------------------
+# APP
+# -------------------------
 app = Flask(__name__)
 CORS(app)
-import os
+
+# -------------------------
+# MODEL LOAD
+# -------------------------
 model_path = os.path.join(os.path.dirname(__file__), "model.pkl")
-model = joblib.load(model_path)
 
-def ml_analyze(text):
-    prob = model.predict_proba([text])[0][1]  # fake olasılığı
-    risk = int(prob * 100)
-    return risk
+try:
+    model = joblib.load(model_path)
+except Exception as e:
+    model = None
+    print("Model yüklenemedi:", e)
 
-app = Flask(__name__)
-CORS(app)
-
+# -------------------------
+# OPENAI
+# -------------------------
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # -------------------------
-# AI ANALİZ (GERÇEK)
+# ML ANALYSIS
+# -------------------------
+def ml_analyze(text):
+    if model is None:
+        return random.randint(40, 70)
+
+    try:
+        prob = model.predict_proba([text])[0][1]
+        return int(prob * 100)
+    except:
+        return random.randint(40, 70)
+
+# -------------------------
+# AI ANALYSIS
 # -------------------------
 def ai_analyze(text):
     try:
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "Metni analiz et ve 0-100 arası dezenformasyon riski ver"},
+                {
+                    "role": "system",
+                    "content": "Metni analiz et ve 0-100 arası dezenformasyon riski ver (sadece sayı döndür)"
+                },
                 {"role": "user", "content": text}
             ]
         )
 
-        score = int(''.join(filter(str.isdigit, response.choices[0].message.content)))
-        return min(score,100)
+        content = response.choices[0].message.content
+        score = int(''.join(filter(str.isdigit, content)))
+
+        return min(score, 100)
 
     except:
-        return random.randint(30,80)
+        return random.randint(30, 80)
 
 # -------------------------
-# ANALİZ
+# ANALYZE ENDPOINT
 # -------------------------
 @app.route("/analyze", methods=["POST"])
 def analyze():
-    text = request.json.get("text","")
+    text = request.json.get("text", "")
 
-    risk = ml_analyze(text)
+    ml_risk = ml_analyze(text)
+    ai_risk = ai_analyze(text)
 
-    return jsonify({"risk": risk})
+    final_risk = int((ml_risk + ai_risk) / 2)
+
+    return jsonify({
+        "text": text,
+        "ml_risk": ml_risk,
+        "ai_risk": ai_risk,
+        "risk": final_risk
+    })
 
 # -------------------------
-# HABER SCRAPING (RSS)
+# NEWS
 # -------------------------
 @app.route("/news")
 def news():
     url = "https://news.google.com/rss?hl=tr&gl=TR&ceid=TR:tr"
     feed = feedparser.parse(url)
 
-    data = []
-    for entry in feed.entries[:10]:
-        data.append({
-            "text": entry.title
-        })
+    data = [
+        {"text": entry.title}
+        for entry in feed.entries[:10]
+    ]
 
     return jsonify(data)
 
 # -------------------------
-# TWITTER (OPSİYONEL)
+# TWITTER
 # -------------------------
 @app.route("/twitter")
 def twitter():
