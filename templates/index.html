@@ -1,62 +1,243 @@
 <!DOCTYPE html>
-<html>
+<html lang="tr">
 <head>
-<title>DEFANS PRO</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DEFANS PRO | Dezenformasyon Analiz Sistemi</title>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Fonts + Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-<style>
-body {background:#0b0f19;color:white;font-family:Arial;}
-.container{width:1100px;margin:auto;}
-.card{background:#151a2b;padding:20px;border-radius:15px;margin-top:20px;}
-button{padding:15px;width:100%;background:#3d5afe;border:none;color:white;}
-.feed-item{padding:10px;border-bottom:1px solid #333;cursor:pointer;}
-</style>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --bg-dark: #080a0f;
+            --card-bg: rgba(22, 27, 34, 0.6);
+            --border-color: #21262d;
+            --accent-purple: #7d5fff;
+            --accent-blue: #3d5afe;
+            --text-gray: #8b949e;
+            --danger: #ff4757;
+            --warning: #f39c12;
+            --success: #2ed573;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: var(--bg-dark);
+            background-image: radial-gradient(circle at top, #161b22 0%, #080a0f 100%);
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        header {
+            max-width: 1200px;
+            margin: 0 auto 60px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .logo { display:flex; align-items:center; gap:10px; font-weight:700; font-size:22px; }
+
+        .logo-box {
+            width:32px; height:32px;
+            border-radius:8px;
+            background: linear-gradient(135deg,var(--accent-blue),var(--accent-purple));
+            display:flex; align-items:center; justify-content:center;
+        }
+
+        .hero { text-align:center; margin-bottom:40px; }
+
+        .hero h1 { font-size:50px; }
+
+        .hero p { color:var(--text-gray); max-width:600px; margin:auto; }
+
+        .stats-row {
+            display:flex;
+            justify-content:center;
+            gap:15px;
+            margin-bottom:40px;
+        }
+
+        .stat-box {
+            background: var(--card-bg);
+            border:1px solid var(--border-color);
+            padding:20px;
+            border-radius:16px;
+            min-width:150px;
+            text-align:center;
+        }
+
+        .grid-container {
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:25px;
+            max-width:1100px;
+            margin:auto;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border:1px solid var(--border-color);
+            padding:25px;
+            border-radius:20px;
+        }
+
+        .card-title {
+            color:var(--text-gray);
+            margin-bottom:20px;
+            font-size:13px;
+        }
+
+        textarea, input {
+            width:100%;
+            padding:12px;
+            border-radius:10px;
+            border:none;
+            background:#ebf1f9;
+            margin-bottom:10px;
+        }
+
+        textarea { height:120px; }
+
+        .btn-main {
+            width:100%;
+            padding:14px;
+            border:none;
+            border-radius:12px;
+            background:linear-gradient(90deg,#4461f2,#7d5fff);
+            color:white;
+            cursor:pointer;
+        }
+
+        table { width:100%; }
+
+        td { padding:10px 0; border-top:1px solid var(--border-color); font-size:13px; }
+
+        .progress-container {
+            width:80px; height:6px;
+            background:#222;
+            border-radius:10px;
+        }
+
+        .progress-bar { height:100%; }
+
+        @media(max-width:768px){
+            .grid-container{grid-template-columns:1fr;}
+            .hero h1{font-size:30px;}
+        }
+    </style>
 </head>
 
 <body>
 
-<div class="container">
+<header>
+    <div class="logo">
+        <div class="logo-box"><i class="fa-solid fa-shield-halved"></i></div>
+        DEFANS PRO
+    </div>
+</header>
 
-<h1>DEFANS</h1>
-
-<div class="card">
-<textarea id="text"></textarea>
-<button onclick="analyze()">Analiz</button>
+<div class="hero">
+    <h1>Dezenformasyon Analiz Sistemi</h1>
+    <p>AI + ML + HF destekli gerçek zamanlı analiz</p>
 </div>
 
-<div class="card">
-<h3>Risk</h3>
-<canvas id="chart"></canvas>
+<div class="stats-row">
+    <div class="stat-box"><h2>0</h2><span>Toplam</span></div>
+    <div class="stat-box"><h2 style="color:red;">0</h2><span>Riskli</span></div>
+    <div class="stat-box"><h2 style="color:green;">0</h2><span>Güvenli</span></div>
 </div>
 
-<div class="card">
-<h3>Haber Akışı</h3>
-<div id="news"></div>
+<div class="grid-container">
+
+    <!-- ANALİZ -->
+    <div class="card">
+        <div class="card-title">YENİ ANALİZ</div>
+
+        <input type="email" placeholder="Email">
+        <textarea placeholder="Metin gir..."></textarea>
+
+        <button class="btn-main">
+            <i class="fa fa-search"></i> Analiz Et
+        </button>
+    </div>
+
+    <!-- SONUÇLAR -->
+    <div class="card">
+        <div class="card-title">SON ANALİZLER</div>
+
+        <table>
+            <tbody></tbody>
+        </table>
+    </div>
+
 </div>
 
-<div class="card">
-<h3>Twitter</h3>
-<div id="twitter"></div>
-</div>
-
+<!-- GRAFİK -->
+<div class="card" style="max-width:1100px;margin:20px auto;">
+    <div class="card-title">RİSK TRENDİ</div>
+    <canvas id="riskChart"></canvas>
 </div>
 
 <script>
+let riskChart;
 
-let chart = new Chart(document.getElementById("chart"), {
-    type: 'doughnut',
-    data: {
-        labels: ['Risk','Güvenli'],
-        datasets: [{
-            data: [50,50]
-        }]
+function initChart(){
+    const ctx = document.getElementById("riskChart");
+
+    riskChart = new Chart(ctx,{
+        type:"line",
+        data:{
+            labels:[],
+            datasets:[{
+                label:"Risk",
+                data:[],
+                borderColor:"#7d5fff",
+                backgroundColor:"rgba(125,95,255,0.2)",
+                fill:true,
+                tension:0.4
+            }]
+        },
+        options:{
+            scales:{
+                y:{min:0,max:100}
+            }
+        }
+    });
+}
+
+function updateChart(risk){
+    const time = new Date().toLocaleTimeString();
+
+    riskChart.data.labels.push(time);
+    riskChart.data.datasets[0].data.push(risk);
+
+    if(riskChart.data.labels.length>10){
+        riskChart.data.labels.shift();
+        riskChart.data.datasets[0].data.shift();
     }
-});
 
-async function analyze(){
-    const text = document.getElementById("text").value;
+    riskChart.update();
+}
+
+initChart();
+
+const btn = document.querySelector(".btn-main");
+const textarea = document.querySelector("textarea");
+const tbody = document.querySelector("tbody");
+
+btn.onclick = async () => {
+
+    const text = textarea.value;
+
+    btn.innerHTML = "Analiz...";
 
     const res = await fetch("/analyze",{
         method:"POST",
@@ -66,41 +247,21 @@ async function analyze(){
 
     const data = await res.json();
 
-    chart.data.datasets[0].data = [data.risk, 100-data.risk];
-    chart.update();
-}
+    updateChart(data.risk);
 
-async function loadNews(){
-    const res = await fetch("/news");
-    const data = await res.json();
+    const row = document.createElement("tr");
+    row.innerHTML = `
+        <td>${text.slice(0,30)}...</td>
+        <td>${data.risk}</td>
+        <td style="color:${data.risk>70?'red':'green'}">
+            ${data.risk>70?'Riskli':'Güvenli'}
+        </td>
+    `;
 
-    let html="";
-    data.forEach(n=>{
-        html += `<div class="feed-item" onclick="use('${n.text}')">📰 ${n.text}</div>`;
-    });
+    tbody.prepend(row);
 
-    document.getElementById("news").innerHTML = html;
-}
-
-async function loadTwitter(){
-    const res = await fetch("/twitter");
-    const data = await res.json();
-
-    let html="";
-    data.forEach(t=>{
-        html += `<div class="feed-item" onclick="use('${t.text}')">🐦 ${t.text}</div>`;
-    });
-
-    document.getElementById("twitter").innerHTML = html;
-}
-
-function use(t){
-    document.getElementById("text").value = t;
-}
-
-loadNews();
-loadTwitter();
-
+    btn.innerHTML = "Analiz Et";
+};
 </script>
 
 </body>

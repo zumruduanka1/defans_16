@@ -1,66 +1,56 @@
-document.querySelector(".btn-main").onclick = async () => {
-    const text = document.querySelector("textarea").value;
-    const email = document.querySelector("input").value;
+let riskChart;
 
-    const res = await fetch("/api/analyze", {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({ text, email })
-    });
+function initChart() {
+    const ctx = document.getElementById("riskChart");
 
-    const data = await res.json();
-
-    alert("Risk: " + data.risk + "% | " + data.status);
-    addToTable(text, data.risk);
-};
-
-function addToTable(text, risk) {
-    const tbody = document.querySelector("tbody");
-
-    let color = risk > 70 ? "red" : (risk < 40 ? "#2ed573" : "#f39c12");
-
-    const row = `
-    <tr>
-        <td>${text.substring(0,30)}</td>
-        <td>
-            <div class="progress-container">
-                <div class="progress-bar" style="width:${risk}%; background:${color}"></div>
-            </div>
-        </td>
-        <td>${risk > 70 ? "⚠️ Şüpheli" : "✅ Güvenli"}</td>
-    </tr>`;
-
-    tbody.innerHTML = row + tbody.innerHTML;
-}
-
-// 🔥 SOSYAL VERİ
-async function loadSocial(){
-    const res = await fetch("/api/social");
-    const data = await res.json();
-
-    const tbody = document.querySelector("tbody");
-
-    data.forEach(p=>{
-        let icon = "📰";
-
-        if(p.platform==="twitter") icon="🐦";
-        if(p.platform==="instagram") icon="📸";
-        if(p.platform==="tiktok") icon="🎵";
-        if(p.platform==="facebook") icon="📘";
-
-        const row = `
-        <tr>
-            <td>${icon} ${p.text.substring(0,40)}</td>
-            <td>
-                <div class="progress-container">
-                    <div class="progress-bar" style="width:${p.risk}%"></div>
-                </div>
-            </td>
-            <td>${p.risk > 70 ? "⚠️ Şüpheli" : "✅ Güvenli"}</td>
-        </tr>`;
-
-        tbody.innerHTML += row;
+    riskChart = new Chart(ctx, {
+        type: "line",
+        data: {
+            labels: [],
+            datasets: [{
+                label: "Risk Skoru",
+                data: [],
+                borderColor: "#7d5fff",
+                backgroundColor: "rgba(125,95,255,0.1)",
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    labels: { color: "#fff" }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: "#8b949e" }
+                },
+                y: {
+                    min: 0,
+                    max: 100,
+                    ticks: { color: "#8b949e" }
+                }
+            }
+        }
     });
 }
 
-loadSocial();
+function updateChart(risk) {
+    const now = new Date().toLocaleTimeString();
+
+    riskChart.data.labels.push(now);
+    riskChart.data.datasets[0].data.push(risk);
+
+    // fazla veri olmasın
+    if (riskChart.data.labels.length > 10) {
+        riskChart.data.labels.shift();
+        riskChart.data.datasets[0].data.shift();
+    }
+
+    riskChart.update();
+}
+
+// init
+window.addEventListener("load", initChart);
