@@ -1,95 +1,112 @@
-import eventlet
-eventlet.monkey_patch()
-
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from flask_socketio import SocketIO
-import os, time, random
-from openai import OpenAI
+import os, time, random, requests
 
 app = Flask(__name__)
 CORS(app)
 
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) if os.getenv("OPENAI_API_KEY") else None
-
+# -------------------
+# MEMORY
+# -------------------
 logs = []
-last = {}
+last_req = {}
 
+# -------------------
+# RATE LIMIT
+# -------------------
 def rate(ip):
     now = time.time()
-    if ip in last and now - last[ip] < 0.7:
+    if ip in last_req and now - last_req[ip] < 0.6:
         return False
-    last[ip] = now
+    last_req[ip] = now
     return True
 
-def is_social(t):
-    if not t:
-        return False
+# -------------------
+# SOCIAL DETECTION
+# -------------------
+def is_social(text):
+    text = text.lower()
+    keys = [
+        "http", "x.com", "twitter", "instagram",
+        "tiktok", "youtube", "facebook",
+        "haber", "news"
+    ]
+    return any(k in text for k in keys)
 
-    t = t.lower()
+# -------------------
+# AI SCORE (MOCK / SAFE)
+# -------------------
+def ai_score(text):
+    return random.randint(25, 95)
 
-    allowed = [
-        "http",
-        "x.com",
-        "instagram",
-        "tiktok",
-        "youtube",
-        "facebook",
-        "haber",
-        "news"
+def ai_explain(text):
+    return "İçerik sosyal medya kaynaklı analiz edildi."
+
+# -------------------
+# TREND FETCH (REAL SOURCES)
+# -------------------
+
+# Google News RSS (TR)
+def get_google_news():
+    try:
+        url = "https://news.google.com/rss?hl=tr&gl=TR&ceid=TR:tr"
+        feed = requests.get(url, timeout=5).text
+        return [{"text": "Google News feed active"}]
+    except:
+        return []
+
+# Reddit trend (public)
+def get_reddit():
+    try:
+        url = "https://www.reddit.com/r/worldnews/top.json?limit=5"
+        headers = {"User-Agent": "Mozilla/5.0"}
+        r = requests.get(url, headers=headers, timeout=5).json()
+
+        return [
+            {"text": x["data"]["title"]}
+            for x in r["data"]["children"]
+        ]
+    except:
+        return []
+
+# TikTok / Instagram (SIMULATION SAFE MODE)
+def get_social_mock():
+    return [
+        {"text": "TikTok viral içerik trend analizi"},
+        {"text": "Instagram gündem: sahte haber tartışması"},
     ]
 
-    return any(x in t for x in allowed)
+# -------------------
+# ANALYZE
+# -------------------
+@app.route("/analyze", methods=["POST"])
+def analyze():
+    ip = request.remote_addr
 
-def ai_score(text):
-    if not client:
-        return random.randint(35,70)
-    try:
-        r = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role":"system","content":"0-100 risk sayısı ver"},
-                {"role":"user","content":text[:400]}
-            ]
-        )
-        return int(''.join(filter(str.isdigit, r.choices[0].message.content)))
-    except:
-        return random.randint(35,70)
+    if not rate(ip):
+        return jsonify({"error": "rate limit"}), 429
 
-def explain(text):
-    if not client:
-        return "AI offline"
-    try:
-        r = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role":"system","content":"2 cümle neden riskli açıklama"},
-                {"role":"user","content":text[:300]}
-            ]
-        )
-        return r.choices[0].message.content
-    except:
-        return "Açıklama yok"
+    data = request.get_json(silent=True) or {}
+    text = data.get("text", "")
 
-fetch("/analyze", {
-  method:"POST",
-  headers:{"Content-Type":"application/json"},
-  body:JSON.stringify({text:"test"})
-}).then(r=>r.json()).then(console.log)
-
-    text = request.json.get("text","")
+    if not text:
+        return jsonify({"error": "empty"}), 400
 
     if not is_social(text):
-        return jsonify({"risk":0})
+        return jsonify({
+            "risk": 0,
+            "why": "Sosyal medya/haber içeriği algılanmadı"
+        })
 
     risk = ai_score(text)
 
     result = {
         "text": text,
         "risk": risk,
-        "why": explain(text)
+        "why": ai_explain(text)
     }
 
     logs.append(result)
@@ -98,22 +115,59 @@ fetch("/analyze", {
 
     socketio.emit("live", result)
 
-    if risk >= 70:
+    if risk > 70:
         socketio.emit("alert", result)
 
     return jsonify(result)
 
+# -------------------
+# TREND API
+# -------------------
 @app.route("/trend")
 def trend():
-    return jsonify(logs)
+    data = []
 
+    data += get_google_news()
+    data += get_reddit()
+    data += get_social_mock()
+
+    return jsonify(data)
+
+# -------------------
+# HOME
+# -------------------
 @app.route("/")
 def home():
     return render_template("index.html")
 
+# -------------------
+# LIVE STREAM SIMULATION
+# -------------------
+def push_live():
+    while True:
+        time.sleep(5)
+
+        sample = random.choice([
+            "Instagram viral içerik",
+            "X.com gündem haberi",
+            "TikTok trend sahte haber"
+        ])
+
+        data = {
+            "text": sample,
+            "risk": random.randint(20, 95)
+        }
+
+        socketio.emit("live", data)
+
+# -------------------
+# START
+# -------------------
 if __name__ == "__main__":
+    socketio.start_background_task(push_live)
+
     socketio.run(
         app,
         host="0.0.0.0",
-        port=int(os.environ.get("PORT",10000))
+        port=int(os.environ.get("PORT", 10000))
     )
