@@ -3,6 +3,14 @@ from flask_cors import CORS
 import os, requests, random
 import feedparser
 from openai import OpenAI
+import joblib
+
+model = joblib.load("fake_news_model.pkl")
+
+def ml_analyze(text):
+    prob = model.predict_proba([text])[0][1]  # fake olasılığı
+    risk = int(prob * 100)
+    return risk
 
 app = Flask(__name__)
 CORS(app)
@@ -35,7 +43,7 @@ def ai_analyze(text):
 def analyze():
     text = request.json.get("text","")
 
-    risk = ai_analyze(text)
+    risk = ml_analyze(text)
 
     return jsonify({"risk": risk})
 

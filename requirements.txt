@@ -1,7 +1,6 @@
 flask
 flask-cors
-requests
-python-dotenv
 gunicorn
-opencv-python-headless
-numpy
+requests
+openai
+feedparser
