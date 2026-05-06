@@ -1,228 +1,106 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>DEFANS PRO</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 
 <style>
-:root{
-    --bg:#080a0f;
-    --card:#161b22;
-    --border:#21262d;
-    --text:#ffffff;
-    --gray:#8b949e;
-}
-
-body{
-    background: radial-gradient(circle at top,#161b22,#080a0f);
-    color:var(--text);
-    font-family:'Inter';
-    padding:20px;
-}
-
-/* HEADER */
-header{
-    display:flex;
-    justify-content:space-between;
-    margin-bottom:50px;
-}
-
-.logo{
-    font-size:22px;
-    font-weight:700;
-}
-
-/* HERO */
-.hero{
-    text-align:center;
-    margin-bottom:40px;
-}
-
-.hero h1{
-    font-size:50px;
-}
-
-/* STATS */
-.stats{
-    display:flex;
-    justify-content:center;
-    gap:15px;
-    margin-bottom:40px;
-}
-
-.stat{
-    background:var(--card);
-    border:1px solid var(--border);
-    padding:20px;
-    border-radius:12px;
-}
-
-/* GRID */
-.grid{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:20px;
-}
-
-.card{
-    background:var(--card);
-    border:1px solid var(--border);
-    border-radius:16px;
-    padding:20px;
-}
-
-/* FORM */
-input,textarea{
-    width:100%;
-    padding:12px;
-    border-radius:10px;
-    border:none;
-    background:#0d1117;
-    color:#fff;
-    margin-bottom:15px;
-}
-
-button{
-    width:100%;
-    padding:15px;
-    border:none;
-    border-radius:10px;
-    background:linear-gradient(90deg,#4461f2,#7d5fff);
-    color:white;
-    cursor:pointer;
-}
-
-/* TABLE */
-table{
-    width:100%;
-}
-
-td{
-    padding:10px 0;
-    border-top:1px solid var(--border);
-}
-
-.progress{
-    height:6px;
-    background:#222;
-    border-radius:10px;
-}
-
-.bar{
-    height:6px;
-    border-radius:10px;
-}
+body {background:#0b0f19;color:white;font-family:Arial;}
+.container{width:1100px;margin:auto;}
+.card{background:#151a2b;padding:20px;border-radius:15px;margin-top:20px;}
+button{padding:15px;width:100%;background:#3d5afe;border:none;color:white;}
+.feed-item{padding:10px;border-bottom:1px solid #333;cursor:pointer;}
 </style>
 </head>
 
 <body>
 
-<header>
-<div class="logo">DEFANS PRO</div>
-<div>AI Powered</div>
-</header>
+<div class="container">
 
-<div class="hero">
 <h1>DEFANS</h1>
-<h2>Dezenformasyon Analiz Sistemi</h2>
-</div>
 
-<div class="stats">
-<div class="stat">0 Analiz</div>
-<div class="stat">0 Riskli</div>
-<div class="stat">0 Güvenli</div>
-</div>
-
-<div class="grid">
-
-<!-- SOL -->
 <div class="card">
-
-<input id="email" placeholder="Mail">
-<textarea id="text" placeholder="Metin gir"></textarea>
-
-<button onclick="analyze()">Analiz Et</button>
-
+<textarea id="text"></textarea>
+<button onclick="analyze()">Analiz</button>
 </div>
 
-<!-- SAĞ -->
 <div class="card">
+<h3>Risk</h3>
+<canvas id="chart"></canvas>
+</div>
 
-<table>
-<tbody id="table"></tbody>
-</table>
+<div class="card">
+<h3>Haber Akışı</h3>
+<div id="news"></div>
+</div>
 
+<div class="card">
+<h3>Twitter</h3>
+<div id="twitter"></div>
 </div>
 
 </div>
 
 <script>
-const table = document.getElementById("table");
 
-/* ANALİZ */
+let chart = new Chart(document.getElementById("chart"), {
+    type: 'doughnut',
+    data: {
+        labels: ['Risk','Güvenli'],
+        datasets: [{
+            data: [50,50]
+        }]
+    }
+});
+
 async function analyze(){
+    const text = document.getElementById("text").value;
 
-let text = document.getElementById("text").value;
+    const res = await fetch("/analyze",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({text})
+    });
 
-let r = await fetch("/api/analyze",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({text})
-});
+    const data = await res.json();
 
-let d = await r.json();
-
-addRow(text,d.risk);
+    chart.data.datasets[0].data = [data.risk, 100-data.risk];
+    chart.update();
 }
 
-/* TABLOYA EKLE */
-function addRow(text,risk){
+async function loadNews(){
+    const res = await fetch("/news");
+    const data = await res.json();
 
-let color="green";
-if(risk>70) color="red";
-else if(risk>40) color="orange";
+    let html="";
+    data.forEach(n=>{
+        html += `<div class="feed-item" onclick="use('${n.text}')">📰 ${n.text}</div>`;
+    });
 
-/* sosyal icon */
-let icon="🌐";
-if(text.includes("twitter")) icon="🐦";
-if(text.includes("instagram")) icon="📸";
-if(text.includes("tiktok")) icon="🎵";
-
-let row=`
-<tr>
-<td>${icon} ${text.substring(0,30)}</td>
-
-<td>
-<div class="progress">
-<div class="bar" style="width:${risk}%;background:${color}"></div>
-</div>
-<span style="font-size:12px;color:#8b949e">${risk}%</span>
-</td>
-
-<td>${risk>70?"⚠️ Şüpheli":"✅ Güvenli"}</td>
-</tr>
-`;
-
-table.innerHTML = row + table.innerHTML;
+    document.getElementById("news").innerHTML = html;
 }
 
-/* SOSYAL VERİ */
-async function loadSocial(){
+async function loadTwitter(){
+    const res = await fetch("/twitter");
+    const data = await res.json();
 
-let r = await fetch("/api/social");
-let data = await r.json();
+    let html="";
+    data.forEach(t=>{
+        html += `<div class="feed-item" onclick="use('${t.text}')">🐦 ${t.text}</div>`;
+    });
 
-data.forEach(p=>{
-addRow(p.text,p.risk);
-});
-
+    document.getElementById("twitter").innerHTML = html;
 }
 
-loadSocial();
+function use(t){
+    document.getElementById("text").value = t;
+}
+
+loadNews();
+loadTwitter();
+
 </script>
 
 </body>
