@@ -210,5 +210,46 @@ socket.on("alert",(d)=>{
 });
 </script>
 
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+    const btn = document.querySelector(".btn-main");
+
+    if (!btn) {
+        console.error("BUTON BULUNAMADI");
+        return;
+    }
+
+    btn.addEventListener("click", async () => {
+
+        const text = document.querySelector("textarea").value;
+
+        console.log("SEND:", text);
+
+        try {
+            const res = await fetch("/analyze", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ text })
+            });
+
+            const data = await res.json();
+
+            console.log("RESPONSE:", data);
+
+            document.getElementById("resultBox").innerHTML =
+                "Risk: " + data.risk + "%<br>" + (data.why || "");
+
+        } catch (err) {
+            console.error("FETCH ERROR:", err);
+        }
+
+    });
+
+});
+</script>
+
 </body>
 </html>
