@@ -10,66 +10,77 @@ from datetime import datetime
 app = Flask(__name__)
 CORS(app)
 
-# --- YAPILANDIRMA (Render/Environment Variables) ---
+# --- YAPILANDIRMA (Render/Environment üzerinden okunur) ---
 HF_TOKEN = os.getenv("HF_TOKEN")
 MAIL_USER = os.getenv("MAIL_USER")
-MAIL_PASS = os.getenv("MAIL_PASS")  # 16 haneli Uygulama Şifresi
+MAIL_PASS = os.getenv("MAIL_PASS") # Gmail Uygulama Şifresi (16 haneli)
 MAIL_TO = os.getenv("MAIL_TO")
 
-# Sayaçlar ve Takip Listesi
+# İstatistik Takibi ve Mail Hafızası
 stats = {"total": 0, "risk": 0, "safe": 0}
-sent_alerts = set() # Aynı içeriği tekrar mail atmamak için hafıza
+sent_intel = set() # Aynı başlığı tekrar mail atmamak için
 
 def ai_engine(text):
-    """Metni Hugging Face AI üzerinden analiz eder (Doğruluk Odaklı)"""
+    """Metni Hugging Face AI ile Manipülasyon ve Dezenformasyon açısından analiz eder"""
     if not HF_TOKEN:
-        # Token yoksa metin uzunluğu ve anahtar kelimelere göre mantıksal tahmin
-        keywords = ["iddia", "şok", "flaş", "gizli", "ifşa", "fake", "yalan"]
-        score = 25
-        for k in keywords:
-            if k in text.lower(): score += 15
-        return min(score, 95)
-    
+        # Token tanımlı değilse; şüpheli anahtar kelimelere göre temel puanlama yapar
+        indicators = ["iddia", "sızıntı", "flaş", "yalanlandı", "gizli", "şok", "gerçek mi"]
+        score = 20
+        for word in indicators:
+            if word in text.lower(): score += 15
+        return min(score, 90)
+
     try:
-        # Dezenformasyon ve Propaganda tespiti için gelişmiş model
+        # Gerçek zamanlı NLP Analiz Modeli
         url = "https://api-inference.huggingface.co/models/facebook/bart-large-mnli"
         headers = {"Authorization": f"Bearer {HF_TOKEN}"}
         payload = {
-            "inputs": text, 
-            "parameters": {"candidate_labels": ["fake news", "propaganda", "real news"]}
+            "inputs": text,
+            "parameters": {"candidate_labels": ["manipulative", "fact-based news", "propaganda", "clickbait"]}
         }
         res = requests.post(url, headers=headers, json=payload, timeout=8).json()
         
-        # Risk skorunu hesapla (Fake News + Propaganda oranları)
+        # Risk faktörlerini (manipülasyon, propaganda, tık tuzağı) birleştirerek hesapla
         scores = dict(zip(res['labels'], res['scores']))
-        risk_val = (scores.get('fake news', 0) + scores.get('propaganda', 0)) * 100
+        risk_val = (scores.get('manipulative', 0) + scores.get('propaganda', 0) + scores.get('clickbait', 0)) * 100
         return int(risk_val)
     except:
-        return 40 # Hata durumunda nötr risk
+        return 35 # Hata durumunda bile 'şüpheli' sınırında raporlama yapması için
 
-def send_defans_mail(content, risk, source_type):
-    """Her türlü içeriği rapor etiketiyle mail gönderir"""
+def send_intel_report(content, risk, label):
+    """
+    Rapor Gönderici: %30 Eşiği Aktif.
+    Hem manuel sorguları hem otomatik bulguları raporlar.
+    """
     if not MAIL_USER or not MAIL_PASS or not MAIL_TO:
+        return
+    
+    # %30 risk eşiği kontrolü
+    if risk < 30:
         return
 
     try:
-        # Risk seviyesine göre görsel etiket
-        tag = "🔴 KRİTİK" if risk > 70 else ("🟡 ŞÜPHELİ" if risk > 35 else "🟢 GÜVENLİ")
-        subject = f"DEFANS RAPORU: {source_type} ({tag} - %{risk})"
+        # Risk seviyesine göre konu başlığını renklendir/etiketle
+        if risk > 75: tag = "🔴 KRİTİK DEZENFORMASYON"
+        elif risk > 50: tag = "🟠 YÜKSEK ŞÜPHE"
+        else: tag = "🟡 DÜŞÜK SEVİYE ŞÜPHE (ERKEN UYARI)"
+
+        timestamp = datetime.now().strftime('%d/%m/%Y %H:%M')
+        subject = f"DEFANS {tag}: %{risk}"
         
         body = f"""
         -------------------------------------------
-        DEFANS PRO | İSTİHBARAT BİLDİRİMİ
+        DEFANS PRO | İSTİHBARAT RAPORU
         -------------------------------------------
-        KAYNAK TÜRÜ: {source_type}
-        ANALİZ TARİHİ: {datetime.now().strftime('%d/%m/%Y %H:%M')}
+        KAYNAK TÜRÜ: {label}
+        ZAMAN: {timestamp}
         RİSK SKORU: %{risk}
         DURUM: {tag}
         
-        İÇERİK ÖZETİ:
+        ANALİZ EDİLEN İÇERİK:
         {content}
         -------------------------------------------
-        Bu rapor otomatik olarak oluşturulmuştur.
+        Bu rapor %30 hassasiyet eşiğiyle otomatik oluşturulmuştur.
         """
         
         msg = MIMEText(body, "plain", "utf-8")
@@ -82,7 +93,7 @@ def send_defans_mail(content, risk, source_type):
         server.sendmail(MAIL_USER, [MAIL_TO], msg.as_string())
         server.quit()
     except Exception as e:
-        print(f"Mail Gönderim Hatası: {e}")
+        print(f"Mail Raporlama Hatası: {e}")
 
 @app.route("/")
 def home():
@@ -90,7 +101,7 @@ def home():
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
-    """Kullanıcının bizzat kutuya yazdığı analizler"""
+    """Kullanıcının manuel girdiği metinlerin analizi"""
     global stats
     data = request.json
     text = data.get("text", "")
@@ -101,21 +112,24 @@ def analyze():
     if risk > 45: stats["risk"] += 1
     else: stats["safe"] += 1
     
-    # KULLANICI ANALİZİ OLARAK HER DURUMDA MAİL AT
-    send_defans_mail(text, risk, "KULLANICI SORGUSU")
+    # Kullanıcı sorgusunu her zaman mail at (Risk %30 üzerindeyse)
+    send_intel_report(text, risk, "KULLANICI SORGUSU")
     
     return jsonify({
         "risk": risk, 
-        "status": "RİSKLİ / ŞÜPHELİ" if risk > 45 else "GÜVENLİ", 
+        "status": "RİSKLİ/ŞÜPHELİ" if risk > 45 else "GÜVENLİ", 
         "current_stats": stats
     })
 
 @app.route("/feed")
 def feed():
-    """Tüm sosyal medya bulgularını raporlar (Filtreleme yok)"""
-    global sent_alerts
-    # X, Instagram ve Haber ağlarını kapsayan yasal RSS köprüsü
-    query = "site:x.com OR site:instagram.com dezenformasyon OR 'sahte haber' OR 'iddia edildi'"
+    """
+    İnternet Tarayıcı: X, Instagram ve Haber kaynaklarını tarar.
+    %30 ve üzeri tüm yeni bulguları mail atar.
+    """
+    global sent_intel
+    # Yalan haberlerin embryo aşamasını (iddia, sızıntı vb.) yakalamak için optimize sorgu
+    query = "site:x.com OR site:instagram.com 'iddia ediliyor' OR 'sızıntı' OR 'gerçek dışı'"
     url = f"https://news.google.com/rss/search?q={query}&hl=tr&gl=TR&ceid=TR:tr"
     
     results = []
@@ -123,19 +137,18 @@ def feed():
         resp = requests.get(url, timeout=7)
         root = ET.fromstring(resp.content)
         
-        for item in root.findall('.//item')[:10]: # Son 10 haber
+        for item in root.findall('.//item')[:12]:
             title = item.find('title').text
             risk = ai_engine(title)
             
-            # AYNI HABERİ TEKRAR ATMAMAK İÇİN KONTROL
-            if title not in sent_alerts:
-                # FİLTRE KALDIRILDI: Tüm bulduklarını mail atar
-                send_defans_mail(title, risk, "OTOMATİK TARAMA BULGUSU")
-                sent_alerts.add(title)
+            # Daha önce raporlanmamış içerikleri raporla
+            if title not in sent_intel:
+                send_intel_report(title, risk, "OTOMATİK TARAMA BULGUSU")
+                sent_intel.add(title)
             
             results.append({"text": title, "risk": risk})
     except Exception as e:
-        results = [{"text": f"Tarayıcı hatası: {str(e)}", "risk": 0}]
+        results = [{"text": "Veri akışı şu an sağlanamıyor...", "risk": 0}]
         
     return jsonify(results)
 
