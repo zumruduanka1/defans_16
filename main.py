@@ -5,325 +5,139 @@ import random
 import requests
 import smtplib
 from email.mime.text import MIMEText
+from datetime import datetime
 
 app = Flask(__name__, template_folder="templates")
 CORS(app)
 
 # =====================================================
-# ENV
+# ENV YÜKLEME
 # =====================================================
-
 HF_TOKEN = os.getenv("HF_TOKEN")
 NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 TWITTER_BEARER = os.getenv("TWITTER_BEARER")
-
 MAIL_USER = os.getenv("MAIL_USER")
 MAIL_PASS = os.getenv("MAIL_PASS")
 MAIL_TO = os.getenv("MAIL_TO")
 
 # =====================================================
-# MAIL
+# GELİŞMİŞ MAİL SİSTEMİ
 # =====================================================
-
-def send_mail(text, risk):
+def send_risk_report(content, risk_score, platform="Manuel Analiz"):
+    if not MAIL_USER or risk_score < 40: # %40 altı riskleri mail atma (gereksiz trafik engelleme)
+        return
 
     try:
-
-        if not MAIL_USER:
-            return
-
-        msg = MIMEText(f"""
-
-İÇERİK:
-
-{text}
-
-RİSK SKORU: %{risk}
-
-""", "plain", "utf-8")
-
-        msg["Subject"] = f"⚠️ Riskli Haber Tespit Edildi %{risk}"
+        subject = f"⚠️ RİSKLİ İÇERİK TESPİTİ - %{risk_score} [{platform}]"
+        body = f"""
+        Tarih: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        Platform: {platform}
+        Risk Skoru: %{risk_score}
+        
+        İÇERİK ANALİZİ:
+        -------------------------------------------
+        {content}
+        -------------------------------------------
+        
+        Bu rapor DEFANS PRO tarafından otomatik oluşturulmuştur.
+        """
+        
+        msg = MIMEText(body, "plain", "utf-8")
+        msg["Subject"] = subject
         msg["From"] = MAIL_USER
         msg["To"] = MAIL_TO
 
         server = smtplib.SMTP("smtp.gmail.com", 587)
-
         server.starttls()
-
         server.login(MAIL_USER, MAIL_PASS)
-
-        server.sendmail(
-            MAIL_USER,
-            MAIL_TO,
-            msg.as_string()
-        )
-
+        server.sendmail(MAIL_USER, MAIL_TO, msg.as_string())
         server.quit()
-
     except Exception as e:
-        print(e)
+        print(f"Mail Hatası: {e}")
 
 # =====================================================
-# AI ANALYZE
+# AI ANALİZ MANTIĞI
 # =====================================================
+def analyze_engine(text):
+    text = text.lower().strip()
+    
+    # Boş veya çok kısa içerik kontrolü
+    if len(text) < 10:
+        return 0, "Geçersiz"
 
-def analyze_text(text):
+    # Temel kelime analizi
+    score = random.randint(10, 30)
+    trigger_words = {
+        "şok": 15, "ifşa": 20, "öldü": 25, "gizli": 10, "deepfake": 30,
+        "sızdırıldı": 20, "yasaklandı": 15, "iddia": 10, "manipülasyon": 25
+    }
+    
+    for word, boost in trigger_words.items():
+        if word in text:
+            score += boost
 
-    text = text.lower()
+    # Görsel/Video linki tespiti için ek risk
+    if any(x in text for x in [".jpg", ".mp4", "youtube.com", "tiktok.com"]):
+        score += 15
 
-    score = 5
-
-    fake_words = [
-        "öldü",
-        "deepfake",
-        "manipülasyon",
-        "ifşa",
-        "komplo",
-        "yasaklandı",
-        "şok",
-        "viral",
-        "sızdırıldı",
-        "iddia"
-    ]
-
-    for w in fake_words:
-
-        if w in text:
-            score += random.randint(10,18)
-
-    if "twitter" in text:
-        score += 10
-
-    if "instagram" in text:
-        score += 10
-
-    if "tiktok" in text:
-        score += 10
-
-    if score > 100:
-        score = 100
-
-    return score
+    score = min(score, 100) # Max 100
+    
+    status = "✅ Güvenli"
+    if score > 75: status = "🚨 Yüksek Risk / Dezenformasyon"
+    elif score > 45: status = "⚠️ Şüpheli İçerik"
+    
+    return score, status
 
 # =====================================================
-# HOME
+# YOLLAR (ROUTES)
 # =====================================================
 
 @app.route("/")
 def home():
     return render_template("index.html")
 
-# =====================================================
-# ANALYZE
-# =====================================================
-
 @app.route("/analyze", methods=["POST"])
 def analyze():
-
     data = request.json
+    content = data.get("text", "")
+    
+    risk, status = analyze_engine(content)
+    
+    # Mail Gönderimi (Sadece riskliyse)
+    if risk >= 40:
+        send_risk_report(content, risk, "Kullanıcı Analizi")
 
-    text = data.get("text","")
-
-    if len(text) < 10:
-
-        return jsonify({
-            "risk":0,
-            "status":"Geçersiz"
-        })
-
-    risk = analyze_text(text)
-
-    if risk > 70:
-        status = "⚠️ Şüpheli"
-
-    elif risk > 40:
-        status = "🟠 Riskli"
-
-    else:
-        status = "✅ Güvenli"
-
-    # MAIL
-    send_mail(text, risk)
-
-    return jsonify({
-        "risk":risk,
-        "status":status
-    })
-
-# =====================================================
-# TWITTER/X API
-# =====================================================
-
-def get_twitter_posts():
-
-    try:
-
-        headers = {
-            "Authorization": f"Bearer {TWITTER_BEARER}"
-        }
-
-        url = "https://api.twitter.com/2/tweets/search/recent?query=viral OR deepfake OR manipülasyon&max_results=10"
-
-        r = requests.get(url, headers=headers)
-
-        data = r.json()
-
-        posts = []
-
-        if "data" in data:
-
-            for tweet in data["data"]:
-
-                posts.append({
-                    "text": tweet["text"],
-                    "platform": "twitter"
-                })
-
-        return posts
-
-    except Exception as e:
-
-        print("TWITTER:", e)
-
-        return []
-
-# =====================================================
-# NEWS API
-# =====================================================
-
-def get_news():
-
-    try:
-
-        url = f"https://newsapi.org/v2/top-headlines?language=tr&pageSize=10&apiKey={NEWS_API_KEY}"
-
-        r = requests.get(url)
-
-        data = r.json()
-
-        posts = []
-
-        if "articles" in data:
-
-            for article in data["articles"]:
-
-                title = article.get("title","")
-
-                posts.append({
-                    "text": title,
-                    "platform": "news"
-                })
-
-        return posts
-
-    except Exception as e:
-
-        print("NEWS:", e)
-
-        return []
-
-# =====================================================
-# HUGGING FACE
-# =====================================================
-
-def hf_fake_score(text):
-
-    try:
-
-        API_URL = "https://api-inference.huggingface.co/models/facebook/bart-large-mnli"
-
-        headers = {
-            "Authorization": f"Bearer {HF_TOKEN}"
-        }
-
-        payload = {
-            "inputs": text
-        }
-
-        r = requests.post(
-            API_URL,
-            headers=headers,
-            json=payload,
-            timeout=20
-        )
-
-        if r.status_code == 200:
-
-            return random.randint(40,95)
-
-        return random.randint(20,60)
-
-    except:
-
-        return random.randint(20,70)
-
-# =====================================================
-# FEED
-# =====================================================
+    return jsonify({"risk": risk, "status": status})
 
 @app.route("/feed")
 def feed():
+    # Bu kısımda API'lerin çalışmıyorsa fallback (yedek) veriler döner
+    posts = []
+    
+    # Örnek Haber Verisi (API yoksa çalışır)
+    try:
+        url = f"https://newsapi.org/v2/top-headlines?country=tr&apiKey={NEWS_API_KEY}"
+        r = requests.get(url, timeout=5)
+        articles = r.json().get("articles", [])
+        for a in articles[:5]:
+            posts.append({"text": a['title'], "platform": "news"})
+    except:
+        posts.append({"text": "Kritik Gelişme: Sosyal medya üzerinde dezenformasyon artıyor.", "platform": "news"})
 
-    all_posts = []
-
-    # TWITTER
-    twitter_posts = get_twitter_posts()
-
-    # NEWS
-    news_posts = get_news()
-
-    all_posts.extend(twitter_posts)
-    all_posts.extend(news_posts)
-
+    # Analiz sonuçlarını ekle
     result = []
-
-    for item in all_posts:
-
-        risk = hf_fake_score(item["text"])
-
+    for p in posts:
+        risk, status = analyze_engine(p['text'])
         result.append({
-
-            "text": item["text"],
-
-            "platform": item["platform"],
-
+            "text": p['text'],
+            "platform": p['platform'],
             "risk": risk
-
         })
-
-        # MAIL GÖNDER
-        send_mail(item["text"], risk)
-
     return jsonify(result)
 
 # =====================================================
-# VIDEO AI
+# START COMMAND
 # =====================================================
-
-@app.route("/video", methods=["POST"])
-def video():
-
-    data = request.json
-
-    url = data.get("url","")
-
-    risk = random.randint(45,95)
-
-    return jsonify({
-        "url":url,
-        "risk":risk,
-        "status":"🎥 Deepfake Şüphesi"
-    })
-
-# =====================================================
-# RUN
-# =====================================================
-
 if __name__ == "__main__":
-
     port = int(os.environ.get("PORT", 10000))
-
-    app.run(
-        host="0.0.0.0",
-        port=port
-    )
+    app.run(host="0.0.0.0", port=port)
