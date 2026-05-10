@@ -212,6 +212,17 @@
         data.forEach(item => addToList(item.text, item.risk));
     }
 
+async function fetchStats() {
+    const res = await fetch("/get_stats");
+    const data = await res.json();
+    document.getElementById("s-total").innerText = data.total;
+    document.getElementById("s-risk").innerText = data.risk;
+    document.getElementById("s-safe").innerText = data.safe;
+}
+
+
+window.onload = fetchStats;
+
     loadFeed();
     setInterval(loadFeed, 60000); // 1 dakikada bir otomatik tazele
 </script>
