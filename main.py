@@ -1,7 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 import os
-import random
 import requests
 import smtplib
 from email.mime.text import MIMEText
@@ -11,42 +10,69 @@ app = Flask(__name__)
 CORS(app)
 
 # =====================================================
-# ENV YAPILANDIRMASI
+# ENV KONFİGÜRASYONU
 # =====================================================
-# MAIL_USER: Gönderen Gmail (Uygulama şifresi alınmış olan)
-# MAIL_PASS: Gönderen Gmail'in 16 haneli uygulama şifresi
-# MAIL_TO: Raporların gideceği DİĞER hesap adresi
+HF_TOKEN = os.getenv("HF_TOKEN") # Hugging Face API Token
 MAIL_USER = os.getenv("MAIL_USER")
 MAIL_PASS = os.getenv("MAIL_PASS")
-MAIL_TO = os.getenv("MAIL_TO") 
-NEWS_API_KEY = os.getenv("NEWS_API_KEY")
+MAIL_TO = os.getenv("MAIL_TO")
 
 # =====================================================
-# ÖZEL MAİL GÖNDERİM SİSTEMİ
+# YAPAY ZEKA ANALİZ MOTORU (Hugging Face API)
 # =====================================================
-def send_report(content, risk_score, platform="Sosyal Medya Takibi"):
-    if not MAIL_USER or not MAIL_TO:
-        return
+def ai_analysis_engine(text):
+    # Eğer API Token yoksa veya hata oluşursa yedek algoritmaya geçer
+    if not HF_TOKEN:
+        return fallback_logic(text)
     
     try:
-        subject = f"⚠️ RİSKLİ İÇERİK: %{risk_score} [{platform}]"
-        body = f"""
-        DEFANS PRO - OTOMATİK RAPOR
-        -------------------------------------------
-        Tespit Zamanı: {datetime.now().strftime('%d.%m.%Y %H:%M:%S')}
-        Kaynak: {platform}
-        Analiz Skoru: %{risk_score}
+        API_URL = "https://api-inference.huggingface.co/models/facebook/bart-large-mnli"
+        headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+        payload = {
+            "inputs": text,
+            "parameters": {"candidate_labels": ["fake news", "real news", "propaganda", "clickbait"]}
+        }
         
-        İçerik:
-        "{content}"
+        response = requests.post(API_URL, headers=headers, json=payload, timeout=10)
+        result = response.json()
         
-        -------------------------------------------
-        Bu içerik sistem tarafından otomatik olarak riskli kategorisine alınmıştır.
-        """
+        # AI Skoru Hesaplama
+        labels = result['labels']
+        scores = result['scores']
         
-        msg = MIMEText(body, "plain", "utf-8")
-        msg["Subject"] = subject
-        msg["From"] = f"DEFANS PRO ANALİZ <{MAIL_USER}>"
+        # Fake news ve propaganda olasılıklarını topla
+        risk_index = 0
+        for label, score in zip(labels, scores):
+            if label in ["fake news", "propaganda", "clickbait"]:
+                risk_index += score
+        
+        risk_score = int(risk_index * 100)
+        
+        if risk_score > 70: status = "🚨 Yapay Zeka: Yüksek Dezenformasyon!"
+        elif risk_score > 40: status = "⚠️ Yapay Zeka: Şüpheli İçerik"
+        else: status = "✅ Yapay Zeka: Güvenli"
+        
+        return risk_score, status
+    except:
+        return fallback_logic(text)
+
+def fallback_logic(text):
+    # API hatası durumunda çalışan yedek motor
+    score = 30
+    bad_words = ["şok", "iddia", "ifşa", "gizlenen", "deepfake", "öldü"]
+    for word in bad_words:
+        if word in text.lower(): score += 15
+    return min(score, 95), "⚠️ Analiz (Yedek Motor)"
+
+# =====================================================
+# OTOMATİK MAİL SİSTEMİ
+# =====================================================
+def send_ai_report(content, risk, status):
+    if not MAIL_USER or not MAIL_TO: return
+    try:
+        msg = MIMEText(f"AI Analiz Sonucu: {status}\nRisk: %{risk}\n\nİçerik:\n{content}", "plain", "utf-8")
+        msg["Subject"] = f"🤖 DEFANS AI RAPORU: %{risk} Risk"
+        msg["From"] = f"DEFANS AI <{MAIL_USER}>"
         msg["To"] = MAIL_TO
 
         server = smtplib.SMTP("smtp.gmail.com", 587)
@@ -55,82 +81,39 @@ def send_report(content, risk_score, platform="Sosyal Medya Takibi"):
         server.sendmail(MAIL_USER, [MAIL_TO], msg.as_string())
         server.quit()
     except Exception as e:
-        print(f"Mail gönderim hatası: {e}")
+        print(f"Mail Hatası: {e}")
 
 # =====================================================
-# ANALİZ MOTORU
+# ROUTES
 # =====================================================
-def get_risk_analysis(text):
-    text = text.lower()
-    score = random.randint(15, 40)
-    
-    # Sosyal medya yalan haber anahtar kelimeleri
-    bad_words = ["şok", "iddia", "gizlenen", "gerçekler", "patladı", "öldü", "flaş", "deepfake", "yapay zeka", "video kaydı"]
-    for word in bad_words:
-        if word in text: score += 15
-        
-    if "http" in text or "t.co" in text: score += 10
-    score = min(score, 100)
-    
-    status = "✅ Güvenli"
-    if score > 70: status = "🚨 Dezenformasyon / Yüksek Risk"
-    elif score > 45: status = "⚠️ Şüpheli / Doğrulanmalı"
-    
-    return score, status
-
-# =====================================================
-# VERİ AKIŞI (Zenginleştirilmiş Sosyal Medya Kaynakları)
-# =====================================================
-@app.route("/feed")
-def feed():
-    final_feed = []
-    
-    # 1. Kaynak: Haber API (Varsa)
-    if NEWS_API_KEY:
-        try:
-            r = requests.get(f"https://newsapi.org/v2/top-headlines?country=tr&apiKey={NEWS_API_KEY}", timeout=5)
-            articles = r.json().get("articles", [])
-            for a in articles[:5]:
-                s, _ = get_risk_analysis(a['title'])
-                final_feed.append({"text": a['title'], "platform": "Haber Kaynağı", "risk": s})
-        except: pass
-
-    # 2. Kaynak: Sosyal Medya Simülasyon Verileri (Veri azlığı için ekleme)
-    sim_data = [
-        "X/Twitter: Yeni bir manipülasyon kampanyası tespit edildi.",
-        "WhatsApp: 'Hastanelerde yer kalmadı' iddiası hızla yayılıyor.",
-        "TikTok: Yapay zeka ile üretilmiş siyasetçi videosu gündemde.",
-        "Instagram: Dolandırıcılık amaçlı 'Bedava bilet' paylaşımları arttı.",
-        "Facebook: Eski bir olay yeniymiş gibi servis ediliyor.",
-        "Telegram: Kripto varlıklarla ilgili asılsız panik haberleri.",
-        "Sosyal Medya: Seçim sonuçlarını etkilemeye yönelik bot hesap faaliyetleri.",
-        "X: Onaylı hesaplardan yayılan sahte kaza görüntüleri."
-    ]
-    
-    for item in sim_data:
-        s, _ = get_risk_analysis(item)
-        final_feed.append({"text": item, "platform": "Sosyal Medya", "risk": s})
-
-    # Her veri çekildiğinde içlerinden en riskli olanı mail olarak raporla
-    riskiest = max(final_feed, key=lambda x: x['risk'])
-    if riskiest['risk'] > 60:
-        send_report(riskiest['text'], riskiest['risk'], "Otomatik Tarama")
-
-    return jsonify(final_feed)
-
 @app.route("/")
-def index(): return render_template("index.html")
+def home():
+    return render_template("index.html")
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
     data = request.json
     content = data.get("text", "")
-    risk, status = get_risk_analysis(content)
+    risk, status = ai_analysis_engine(content)
     
-    # Manuel analizi her zaman mail at (İstediğin özellik)
-    send_report(content, risk, "Kullanıcı Manuel Analizi")
+    # Her analizi mail olarak gönder
+    send_ai_report(content, risk, status)
     
     return jsonify({"risk": risk, "status": status})
+
+@app.route("/feed")
+def feed():
+    # Sosyal medya simülasyonu
+    sim_data = [
+        "Twitter: Yeni bir bot operasyonu saptandı.",
+        "WhatsApp: 'Yarın sular kesilecek' haberi dezenformasyon çıktı.",
+        "TikTok: Siyasilere ait deepfake videolar yayılıyor."
+    ]
+    posts = []
+    for t in sim_data:
+        risk, _ = ai_analysis_engine(t)
+        posts.append({"text": t, "platform": "Sosyal Medya", "risk": risk})
+    return jsonify(posts)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
