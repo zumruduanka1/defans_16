@@ -10,49 +10,54 @@ from datetime import datetime
 app = Flask(__name__)
 CORS(app)
 
-# --- AYARLAR (Render'da bu isimlerle tanımlamalısın) ---
+# --- YAPILANDIRMA ---
 HF_TOKEN = os.getenv("HF_TOKEN")
 MAIL_USER = os.getenv("MAIL_USER")
 MAIL_PASS = os.getenv("MAIL_PASS")
 MAIL_TO = os.getenv("MAIL_TO")
 
 stats = {"total": 0, "risk": 0, "safe": 0}
-sent_news = set() # Aynı haberi tekrar tekrar mail atmaması için
+sent_alerts = set() # Aynı internet haberini tekrar atmamak için
 
-def ai_analyze_engine(text):
-    """Hugging Face AI ile metnin manipülasyon içerip içermediğini sorgular"""
-    if not HF_TOKEN:
-        # Token yoksa basit bir yedek algoritma (Senaryon bozulmasın diye)
-        return 45 if len(text) % 2 == 0 else 20
-    
+def ai_engine(text):
+    """Hugging Face AI ile Dezenformasyon Analizi"""
+    if not HF_TOKEN: return 40 # Token yoksa sabit orta risk
     try:
-        # Dezenformasyon tespiti için en iyi modellerden biri (BART Large MNLI)
-        API_URL = "https://api-inference.huggingface.co/models/facebook/bart-large-mnli"
+        url = "https://api-inference.huggingface.co/models/facebook/bart-large-mnli"
         headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-        payload = {
-            "inputs": text,
-            "parameters": {"candidate_labels": ["fake news", "propaganda", "real news"]}
-        }
-        response = requests.post(API_URL, headers=headers, json=payload, timeout=7).json()
-        
-        # Riskli etiketlerin skorlarını topla
-        labels = response['labels']
-        scores = response['scores']
-        risk_index = sum(score for label, score in zip(labels, scores) if label in ["fake news", "propaganda"])
-        
-        return int(risk_index * 100)
-    except:
-        return 30 # Hata durumunda güvenli tarafta kal
+        payload = {"inputs": text, "parameters": {"candidate_labels": ["fake news", "real news"]}}
+        res = requests.post(url, headers=headers, json=payload, timeout=5).json()
+        idx = res['labels'].index('fake news')
+        return int(res['scores'][idx] * 100)
+    except: return 40
 
-def send_defans_mail(content, risk, source="MANUEL ANALİZ"):
-    """Bulunan riskli haberi anında mail gönderir"""
-    if not MAIL_USER or not MAIL_PASS or not MAIL_TO:
-        return
+def send_intel_mail(content, risk, source_type):
+    """
+    Rapor Gönderici
+    source_type: 'Kullanıcı Analizi' veya 'Otomatik Tarama'
+    """
+    if not MAIL_USER or not MAIL_PASS or not MAIL_TO: return
     
     try:
-        status = "KRİTİK RİSK" if risk > 70 else "ŞÜPHELİ"
-        msg = MIMEText(f"KAYNAK: {source}\nANALİZ SONUCU: {status}\nRİSK SKORU: %{risk}\n\nİÇERİK:\n{content}", "plain", "utf-8")
-        msg["Subject"] = f"🚨 DEFANS TESPİT: %{risk} ({source})"
+        status = "🚨 YÜKSEK RİSK" if risk > 70 else ("⚠️ ŞÜPHELİ" if risk > 40 else "✅ GÜVENLİ")
+        timestamp = datetime.now().strftime('%d/%m/%Y %H:%M')
+        
+        subject = f"DEFANS {source_type}: %{risk}"
+        body = f"""
+        DEFANS PRO İSTİHBARAT RAPORU
+        ---------------------------
+        KAYNAK: {source_type}
+        ZAMAN: {timestamp}
+        SKOR: %{risk}
+        DURUM: {status}
+        
+        İÇERİK:
+        {content}
+        ---------------------------
+        """
+        
+        msg = MIMEText(body, "plain", "utf-8")
+        msg["Subject"] = subject
         msg["From"] = f"Defans AI <{MAIL_USER}>"
         msg["To"] = MAIL_TO
 
@@ -60,8 +65,7 @@ def send_defans_mail(content, risk, source="MANUEL ANALİZ"):
         server.login(MAIL_USER, MAIL_PASS)
         server.sendmail(MAIL_USER, [MAIL_TO], msg.as_string())
         server.quit()
-    except Exception as e:
-        print(f"Mail gönderim hatası: {e}")
+    except: pass
 
 @app.route("/")
 def home():
@@ -69,45 +73,52 @@ def home():
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
+    """Kullanıcının butona basarak yaptığı tüm analizleri mail atar"""
     global stats
     data = request.json
     text = data.get("text", "")
-    risk = ai_analyze_engine(text)
+    risk = ai_engine(text)
     
-    status = "🚨 RİSKLİ" if risk > 55 else "✅ GÜVENLİ"
+    # İstatistik Güncelleme
     stats["total"] += 1
-    if risk > 55: stats["risk"] += 1
+    if risk > 50: stats["risk"] += 1
     else: stats["safe"] += 1
     
-    # Kullanıcının manuel yaptığı analizi her zaman mail at
-    send_defans_mail(text, risk, "KULLANICI ANALİZİ")
+    # Kullanıcı analizini her durumda (belirterek) mail at
+    send_intel_mail(text, risk, "KULLANICI ANALİZİ")
     
-    return jsonify({"risk": risk, "status": status, "current_stats": stats})
+    return jsonify({
+        "risk": risk, 
+        "status": "RİSKLİ" if risk > 50 else "GÜVENLİ", 
+        "current_stats": stats
+    })
 
 @app.route("/feed")
 def feed():
-    """İnterneti tarar ve bulduğu RİSKLİ haberleri otomatik mail atar"""
-    global sent_news
-    url = "https://news.google.com/rss/search?q=site:x.com+OR+site:instagram.com+sahte+haber&hl=tr&gl=TR&ceid=TR:tr"
-    news_feed = []
+    """İnterneti tarar ve SADECE yalan olma ihtimali olanları mail atar"""
+    global sent_alerts
+    # Sosyal medya ve haber sitelerindeki sahte haber içeriklerini tarayan yasal köprü
+    query = "site:x.com OR site:instagram.com 'iddia' OR 'fake news' OR 'yalan haber'"
+    url = f"https://news.google.com/rss/search?q={query}&hl=tr&gl=TR&ceid=TR:tr"
     
+    results = []
     try:
         resp = requests.get(url, timeout=5)
         root = ET.fromstring(resp.content)
-        for item in root.findall('.//item')[:5]:
+        for item in root.findall('.//item')[:8]:
             title = item.find('title').text
-            risk = ai_analyze_engine(title)
+            risk = ai_engine(title)
             
-            # EĞER HABER ÇOK RİSKLİ VE DAHA ÖNCE ATILMAMIŞSA OTOMATİK MAİL AT
-            if risk > 75 and title not in sent_news:
-                send_defans_mail(title, risk, "OTOMATİK SİSTEM TARAMASI")
-                sent_news.add(title)
+            # KRİTİK FİLTRE: Sadece yalan haber olma ihtimali %60+ olanları mail at
+            if risk > 60 and title not in sent_alerts:
+                send_intel_mail(title, risk, "OTOMATİK TARAMA (YALAN HABER TESPİTİ)")
+                sent_alerts.add(title)
             
-            news_feed.append({"text": title, "risk": risk})
+            results.append({"text": title, "risk": risk})
     except:
-        news_feed = [{"text": "Canlı akış şu an aktif değil.", "risk": 0}]
-    
-    return jsonify(news_feed)
+        results = [{"text": "Canlı akış şu an yüklenemiyor.", "risk": 0}]
+        
+    return jsonify(results)
 
 if __name__ == "__main__":
     app.run(debug=True)

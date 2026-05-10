@@ -2,104 +2,308 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>DEFANS PRO | X-VERIFY</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;900&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DEFANS PRO | AI Dezenformasyon Takip</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
     <style>
-        :root { --bg: #000; --card: #15181c; --blue: #1d9bf0; --border: #2f3336; }
-        body { background: var(--bg); color: #fff; font-family: 'Inter', sans-serif; margin: 0; }
-        
-        /* TWITTER BANNER ALANI */
-        .banner { 
-            width: 100%; height: 200px; 
-            background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.8)), url('https://abs.twimg.com/images/themes/theme1/bg.png');
-            background-size: cover; background-position: center;
-            display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--border);
+        :root { 
+            --bg: #000000; 
+            --card: #15181c; 
+            --blue: #1d9bf0; 
+            --border: #2f3336; 
+            --text-main: #eff3f4;
+            --text-gray: #71767b;
+            --danger: #f4212e;
+            --success: #00ba7c;
         }
-        .banner h1 { font-size: 60px; font-weight: 900; letter-spacing: -3px; margin: 0; color: var(--blue); }
 
-        .container { max-width: 1000px; margin: -50px auto 0; padding: 20px; }
-        .grid { display: grid; grid-template-columns: 1fr 350px; gap: 20px; }
-        
-        .card { background: var(--card); border-radius: 16px; padding: 20px; border: 1px solid var(--border); }
-        .stats { display: flex; gap: 10px; margin-bottom: 20px; }
-        .stat-item { flex: 1; background: var(--card); padding: 15px; border-radius: 12px; border: 1px solid var(--border); text-align: center; }
-        .stat-item h2 { margin: 0; font-size: 24px; color: var(--blue); }
+        body { 
+            background-color: var(--bg); 
+            color: var(--text-main); 
+            font-family: 'Inter', sans-serif; 
+            margin: 0; 
+            padding: 0;
+        }
 
-        textarea { width: 100%; background: #000; border: 1px solid var(--border); padding: 15px; border-radius: 12px; color: #fff; height: 100px; resize: none; box-sizing: border-box; }
-        button { width: 100%; padding: 15px; border-radius: 30px; border: none; background: var(--blue); color: #fff; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.2s; }
-        button:hover { opacity: 0.9; transform: scale(0.98); }
+        /* BANNER ALANI */
+        .banner { 
+            width: 100%; 
+            height: 220px; 
+            background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)), url('https://abs.twimg.com/images/themes/theme1/bg.png');
+            background-size: cover; 
+            background-position: center;
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+            justify-content: center; 
+            border-bottom: 1px solid var(--border);
+        }
 
-        .feed-item { padding: 15px; border-bottom: 1px solid var(--border); font-size: 14px; cursor: pointer; transition: 0.2s; }
-        .feed-item:hover { background: #1c1f23; }
-        .risk-badge { float: right; font-weight: bold; }
+        .banner h1 { 
+            font-size: 65px; 
+            font-weight: 900; 
+            letter-spacing: -4px; 
+            margin: 0; 
+            color: var(--blue); 
+            text-shadow: 0 4px 15px rgba(29, 155, 240, 0.3);
+        }
+
+        .banner p { color: var(--text-gray); margin-top: 5px; font-weight: 500; }
+
+        .container { 
+            max-width: 1100px; 
+            margin: -60px auto 40px; 
+            padding: 0 20px; 
+        }
+
+        /* İSTATİSTİK KARTLARI */
+        .stats-grid { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 15px; 
+            margin-bottom: 30px; 
+        }
+
+        .stat-card { 
+            background: var(--card); 
+            border: 1px solid var(--border); 
+            padding: 20px; 
+            border-radius: 16px; 
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .stat-card h2 { margin: 0; font-size: 32px; font-weight: 900; }
+        .stat-card span { color: var(--text-gray); font-size: 12px; font-weight: bold; text-transform: uppercase; }
+
+        /* ANA PANEL */
+        .main-grid { 
+            display: grid; 
+            grid-template-columns: 1.4fr 0.6fr; 
+            gap: 20px; 
+        }
+
+        .card { 
+            background: var(--card); 
+            border-radius: 20px; 
+            padding: 25px; 
+            border: 1px solid var(--border); 
+        }
+
+        h3 { margin-top: 0; font-size: 20px; display: flex; align-items: center; gap: 10px; }
+
+        /* INPUT ALANI */
+        textarea { 
+            width: 100%; 
+            background: #000; 
+            border: 1px solid var(--border); 
+            padding: 18px; 
+            border-radius: 15px; 
+            color: #fff; 
+            font-size: 16px; 
+            height: 140px; 
+            resize: none; 
+            box-sizing: border-box; 
+            font-family: inherit;
+        }
+
+        textarea:focus { border-color: var(--blue); outline: none; }
+
+        button { 
+            width: 100%; 
+            padding: 16px; 
+            border-radius: 30px; 
+            border: none; 
+            background: var(--blue); 
+            color: #fff; 
+            font-weight: 900; 
+            cursor: pointer; 
+            margin-top: 15px; 
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+
+        button:hover { background: #1a8cd8; transform: translateY(-2px); }
+
+        /* SONUÇ KUTUSU */
+        .result-display { 
+            margin-top: 20px; 
+            padding: 20px; 
+            border-radius: 15px; 
+            display: none; 
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+
+        /* CANLI AKIŞ ALANI */
+        #feedArea { 
+            max-height: 550px; 
+            overflow-y: auto; 
+        }
+
+        .feed-item { 
+            padding: 15px; 
+            border-bottom: 1px solid var(--border); 
+            transition: 0.2s; 
+            cursor: pointer;
+        }
+
+        .feed-item:hover { background: rgba(255,255,255,0.03); }
+
+        .feed-item .meta { 
+            display: flex; 
+            justify-content: space-between; 
+            font-size: 11px; 
+            color: var(--text-gray); 
+            margin-bottom: 5px;
+        }
+
+        .risk-tag { 
+            font-weight: 900; 
+            padding: 2px 6px; 
+            border-radius: 4px; 
+            font-size: 10px; 
+        }
+
+        /* SCROLLBAR TASARIMI */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
     </style>
 </head>
 <body>
 
     <div class="banner">
         <h1>DEFANS PRO</h1>
+        <p>AI Destekli Gerçek Zamanlı İstihbarat & Doğrulama</p>
     </div>
 
     <div class="container">
-        <div class="stats">
-            <div class="stat-item"><h2 id="s-total">0</h2><small>TOPLAM</small></div>
-            <div class="stat-item"><h2 id="s-risk" style="color:#f4212e">0</h2><small>RİSKLİ</small></div>
-            <div class="stat-item"><h2 id="s-safe" style="color:#00ba7c">0</h2><small>TEMİZ</small></div>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h2 id="s-total" style="color: var(--blue);">0</h2>
+                <span>Toplam Analiz</span>
+            </div>
+            <div class="stat-card">
+                <h2 id="s-risk" style="color: var(--danger);">0</h2>
+                <span>Yalan/Riskli</span>
+            </div>
+            <div class="stat-card">
+                <h2 id="s-safe" style="color: var(--success);">0</h2>
+                <span>Güvenli</span>
+            </div>
         </div>
 
-        <div class="grid">
+        <div class="main-grid">
             <div class="card">
-                <h3 style="margin-top:0"><i class="fa-solid fa-bolt"></i> Hızlı Analiz</h3>
-                <textarea id="uText" placeholder="İçeriği buraya yapıştır..."></textarea>
-                <button onclick="analyze()">ANALİZ ET & BİLDİR</button>
-                <div id="res" style="display:none; margin-top:20px; text-align:center; padding:20px; border-radius:12px;">
-                    <div id="resStatus" style="font-size:32px; font-weight:900;"></div>
-                    <div id="resRisk"></div>
+                <h3><i class="fa-solid fa-wand-magic-sparkles" style="color:var(--blue)"></i> Metin Analizi</h3>
+                <textarea id="uText" placeholder="Şüpheli haber metni veya sosyal medya içeriğini buraya yapıştırın..."></textarea>
+                <button onclick="analyze()">İÇERİĞİ SORGULA VE RAPORLA</button>
+                
+                <div id="res" class="result-display">
+                    <div id="resStatus" style="font-size: 28px; font-weight: 900; margin-bottom: 5px;"></div>
+                    <div id="resRisk" style="font-size: 14px; color: var(--text-gray);"></div>
                 </div>
             </div>
 
             <div class="card">
-                <h3 style="margin-top:0"><i class="fa-brands fa-x-twitter"></i> Canlı Sosyal Akış</h3>
-                <div id="feedArea" style="max-height: 500px; overflow-y: auto;">Yükleniyor...</div>
+                <h3><i class="fa-brands fa-x-twitter"></i> Canlı Sosyal Akış</h3>
+                <div id="feedArea">
+                    <div style="text-align: center; color: var(--text-gray); padding: 20px;">
+                        <i class="fa-solid fa-spinner fa-spin"></i> Tarama yapılıyor...
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
+        // ANALİZ FONKSİYONU
         async function analyze() {
-            const val = document.getElementById("uText").value;
-            if(val.length < 5) return;
-            const res = await fetch("/analyze", {
-                method: "POST", headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({text: val})
-            });
-            const data = await res.json();
-            
-            document.getElementById("res").style.display = "block";
-            document.getElementById("resStatus").innerText = data.status;
-            document.getElementById("resRisk").innerText = "Risk Oranı: %" + data.risk;
-            document.getElementById("res").style.backgroundColor = data.risk > 50 ? "rgba(244,33,46,0.1)" : "rgba(0,186,124,0.1)";
-            document.getElementById("resStatus").style.color = data.risk > 50 ? "#f4212e" : "#00ba7c";
+            const input = document.getElementById("uText").value;
+            if (input.length < 5) return alert("Lütfen geçerli bir içerik girin.");
 
-            document.getElementById("s-total").innerText = data.current_stats.total;
-            document.getElementById("s-risk").innerText = data.current_stats.risk;
-            document.getElementById("s-safe").innerText = data.current_stats.safe;
+            const resDiv = document.getElementById("res");
+            const statusText = document.getElementById("resStatus");
+            const riskText = document.getElementById("resRisk");
+
+            // Butonu kilitle
+            const btn = document.querySelector("button");
+            btn.disabled = true;
+            btn.innerText = "YAPAY ZEKA İNCELİYOR...";
+
+            try {
+                const response = await fetch("/analyze", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ text: input })
+                });
+                const data = await response.json();
+
+                // Sonuçları göster
+                resDiv.style.display = "block";
+                statusText.innerText = data.status;
+                riskText.innerText = "Doğruluk Skoru: %" + (100 - data.risk) + " | Risk: %" + data.risk;
+                
+                // Renkleri ayarla
+                if (data.risk > 50) {
+                    statusText.style.color = "var(--danger)";
+                    resDiv.style.backgroundColor = "rgba(244,33,46,0.1)";
+                } else {
+                    statusText.style.color = "var(--success)";
+                    resDiv.style.backgroundColor = "rgba(0,186,124,0.1)";
+                }
+
+                // İstatistikleri güncelle
+                document.getElementById("s-total").innerText = data.current_stats.total;
+                document.getElementById("s-risk").innerText = data.current_stats.risk;
+                document.getElementById("s-safe").innerText = data.current_stats.safe;
+
+            } catch (error) {
+                alert("Analiz sırasında bir hata oluştu.");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "İÇERİĞİ SORGULA VE RAPORLA";
+            }
         }
 
+        // CANLI AKIŞI YÜKLEME FONKSİYONU
         async function loadFeed() {
-            const res = await fetch("/feed");
-            const data = await res.json();
-            let h = "";
-            data.forEach(i => {
-                h += `<div class="feed-item" onclick="document.getElementById('uText').value='${i.text}';">
-                    <span class="risk-badge" style="color:${i.risk > 50 ? '#f4212e':'#00ba7c'}">%${i.risk}</span>
-                    ${i.text.substring(0, 80)}...
-                </div>`;
-            });
-            document.getElementById("feedArea").innerHTML = h;
+            try {
+                const response = await fetch("/feed");
+                const data = await response.json();
+                const feedArea = document.getElementById("feedArea");
+                
+                let html = "";
+                data.forEach(item => {
+                    const color = item.risk > 60 ? "var(--danger)" : (item.risk > 35 ? "#ffd000" : "var(--success)");
+                    const bg = item.risk > 60 ? "rgba(244,33,46,0.1)" : (item.risk > 35 ? "rgba(255,208,0,0.1)" : "rgba(0,186,124,0.1)");
+                    
+                    html += `
+                        <div class="feed-item" onclick="fillInput('${item.text.replace(/'/g, "\\'")}')">
+                            <div class="meta">
+                                <span><i class="fa-solid fa-globe"></i> Sosyal Medya Tarandı</span>
+                                <span class="risk-tag" style="color:${color}; background:${bg}">%${item.risk} RİSK</span>
+                            </div>
+                            <div style="font-size:13px; line-height:1.4;">${item.text}</div>
+                        </div>
+                    `;
+                });
+                feedArea.innerHTML = html;
+            } catch (e) {
+                console.error("Akış yüklenemedi.");
+            }
         }
+
+        function fillInput(text) {
+            document.getElementById("uText").value = text;
+            window.scrollTo({ top: 150, behavior: 'smooth' });
+        }
+
+        // Başlangıçta ve her 60 saniyede bir akışı güncelle
         loadFeed();
+        setInterval(loadFeed, 60000);
     </script>
 </body>
 </html>
