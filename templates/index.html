@@ -1,215 +1,450 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DEFANS PRO | Dezenformasyon Analiz Sistemi</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<title>DEFANS PRO</title>
 
-    <!-- EKLENEN -->
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 
-    <style>
-        :root {
-            --bg-dark: #080a0f;
-            --card-bg: rgba(22, 27, 34, 0.6);
-            --border-color: #21262d;
-            --accent-purple: #7d5fff;
-            --accent-blue: #3d5afe;
-            --text-gray: #8b949e;
-            --danger: #ff4757;
-            --warning: #f39c12;
-            --success: #2ed573;
-        }
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+<style>
 
-        body {
-            background-color: var(--bg-dark);
-            background-image: radial-gradient(circle at top, #161b22 0%, #080a0f 100%);
-            color: #ffffff;
-            font-family: 'Inter', sans-serif;
-            min-height: 100vh;
-            padding: 20px;
-        }
+:root{
+    --bg:#080a0f;
+    --card:#161b22;
+    --border:#21262d;
+    --text:#ffffff;
+    --gray:#8b949e;
+    --purple:#7d5fff;
+    --blue:#3d5afe;
+    --danger:#ff4757;
+    --success:#2ed573;
+    --warning:#f39c12;
+}
 
-        header {
-            max-width: 1200px;
-            margin: 0 auto 60px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
 
-        .logo { display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 700; }
+body{
+    background: radial-gradient(circle at top,#161b22,#080a0f);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    padding:20px;
+}
 
-        .logo-box {
-            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
-            width: 32px; height: 32px;
-            border-radius: 8px;
-            display: flex; align-items: center; justify-content: center;
-        }
+/* HEADER */
 
-        .ai-badge {
-            font-size: 12px;
-            border: 1px solid #1f2937;
-            padding: 6px 16px;
-            border-radius: 20px;
-            color: #58a6ff;
-            background: rgba(56, 139, 253, 0.1);
-        }
+header{
+    max-width:1200px;
+    margin:auto;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:60px;
+}
 
-        .hero { text-align: center; margin-bottom: 50px; }
+.logo{
+    font-size:24px;
+    font-weight:700;
+}
 
-        .hero h1 { font-size: 64px; font-weight: 800; }
+.badge{
+    padding:8px 16px;
+    border-radius:20px;
+    background:rgba(61,90,254,.15);
+    border:1px solid #1f2937;
+    color:#58a6ff;
+}
 
-        .hero p { color: var(--text-gray); max-width: 600px; margin: 20px auto; }
+/* HERO */
 
-        .stats-row { display: flex; justify-content: center; gap: 15px; margin-bottom: 60px; }
+.hero{
+    text-align:center;
+    margin-bottom:50px;
+}
 
-        .stat-box {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            padding: 20px;
-            border-radius: 16px;
-            min-width: 160px;
-            text-align: center;
-        }
+.hero h1{
+    font-size:64px;
+    font-weight:800;
+}
 
-        .grid-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            max-width: 1100px;
-            margin: 0 auto;
-        }
+.hero p{
+    margin-top:20px;
+    color:var(--gray);
+}
 
-        .card {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 24px;
-            padding: 30px;
-        }
+/* STATS */
 
-        textarea {
-            width: 100%;
-            background: #ebf1f9;
-            border-radius: 12px;
-            padding: 14px;
-        }
+.stats{
+    display:flex;
+    justify-content:center;
+    gap:15px;
+    margin-bottom:50px;
+    flex-wrap:wrap;
+}
 
-        .btn-main {
-            width: 100%;
-            padding: 16px;
-            border-radius: 14px;
-            background: linear-gradient(90deg, #4461f2, #7d5fff);
-            color: white;
-            cursor: pointer;
-            margin-top: 15px;
-        }
+.stat{
+    background:var(--card);
+    border:1px solid var(--border);
+    padding:20px;
+    border-radius:16px;
+    min-width:170px;
+    text-align:center;
+}
 
-        table { width: 100%; border-collapse: collapse; }
-        td { padding: 15px 0; border-top: 1px solid var(--border-color); }
+.stat h2{
+    font-size:32px;
+}
 
-        .progress-container {
-            width: 80px;
-            height: 6px;
-            background: #21262d;
-            border-radius: 10px;
-        }
+/* GRID */
 
-        .progress-bar { height: 100%; border-radius: 10px; }
+.grid{
+    max-width:1200px;
+    margin:auto;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:25px;
+}
 
-        /* EKLENEN */
-        #resultBox {
-            margin-top:15px;
-            padding:15px;
-            background:#161b22;
-            border-radius:12px;
-        }
-    </style>
+.card{
+    background:rgba(22,27,34,.7);
+    border:1px solid var(--border);
+    border-radius:22px;
+    padding:25px;
+    backdrop-filter:blur(10px);
+}
+
+/* FORM */
+
+label{
+    font-size:13px;
+    color:var(--gray);
+    display:block;
+    margin-bottom:8px;
+}
+
+input,
+textarea{
+    width:100%;
+    background:#ebf1f9;
+    border:none;
+    border-radius:12px;
+    padding:14px;
+    margin-bottom:18px;
+    font-size:14px;
+}
+
+textarea{
+    height:120px;
+    resize:none;
+}
+
+button{
+    width:100%;
+    padding:16px;
+    border:none;
+    border-radius:14px;
+    background:linear-gradient(90deg,var(--blue),var(--purple));
+    color:white;
+    font-size:15px;
+    font-weight:600;
+    cursor:pointer;
+}
+
+/* RESULT */
+
+.result-box{
+    margin-top:20px;
+    padding:15px;
+    border-radius:14px;
+    background:#0d1117;
+}
+
+.progress{
+    margin-top:15px;
+    height:8px;
+    background:#222;
+    border-radius:10px;
+    overflow:hidden;
+}
+
+.bar{
+    height:100%;
+    width:0%;
+    transition:.4s;
+}
+
+/* FEED */
+
+.feed-item{
+    padding:15px 0;
+    border-bottom:1px solid var(--border);
+    cursor:pointer;
+    color:#d1d5db;
+}
+
+.feed-item:hover{
+    opacity:.8;
+}
+
+.feed-icon{
+    margin-right:10px;
+}
+
+/* STATUS */
+
+.status{
+    margin-top:10px;
+    font-weight:700;
+}
+
+/* MOBILE */
+
+@media(max-width:768px){
+
+.grid{
+    grid-template-columns:1fr;
+}
+
+.hero h1{
+    font-size:38px;
+}
+
+}
+
+</style>
 </head>
 
 <body>
 
 <header>
-    <div class="logo">
-        <div class="logo-box"><i class="fa-solid fa-shield-halved"></i></div>
-        DEFANS PRO
-    </div>
-    <div class="ai-badge">AI Powered</div>
+
+<div class="logo">
+<i class="fa-solid fa-shield-halved"></i>
+DEFANS PRO
+</div>
+
+<div class="badge">
+AI Powered
+</div>
+
 </header>
 
 <section class="hero">
-    <h1>DEFANS</h1>
-    <h1>Dezenformasyon Analiz Sistemi</h1>
+
+<h1>DEFANS</h1>
+
+<p>
+Dezenformasyon Erken Fark ve Analiz Sistemi
+</p>
+
 </section>
 
-<div class="grid-container">
+<div class="stats">
 
-<div class="card">
-    <h3>Yeni Analiz</h3>
-
-    <textarea id="textInput"></textarea>
-
-    <button class="btn-main">Analiz Başlat</button>
-
-    <div id="resultBox">Sonuç burada</div>
+<div class="stat">
+<h2 id="totalCount">0</h2>
+<span>Toplam Analiz</span>
 </div>
 
-<div class="card">
-    <h3>Son Analizler</h3>
+<div class="stat">
+<h2 id="riskCount" style="color:var(--danger)">0</h2>
+<span>Riskli İçerik</span>
+</div>
 
-    <table>
-        <tbody id="logTable"></tbody>
-    </table>
+<div class="stat">
+<h2 id="safeCount" style="color:var(--success)">0</h2>
+<span>Güvenli İçerik</span>
+</div>
+
+</div>
+
+<div class="grid">
+
+<!-- SOL -->
+
+<div class="card">
+
+<label>E-posta</label>
+<input id="mail" type="email" placeholder="mail@example.com">
+
+<label>Analiz Edilecek İçerik</label>
+
+<textarea id="text"
+placeholder="Haber, tweet, sosyal medya paylaşımı..."></textarea>
+
+<button onclick="analyzeContent()">
+<i class="fa-solid fa-magnifying-glass"></i>
+Analiz Et
+</button>
+
+<div class="result-box">
+
+<div id="resultText">
+Sonuç bekleniyor...
+</div>
+
+<div class="progress">
+<div class="bar" id="bar"></div>
+</div>
+
+<div class="status" id="status"></div>
+
+</div>
+
+</div>
+
+<!-- SAĞ -->
+
+<div class="card">
+
+<h3 style="margin-bottom:20px;">
+Sosyal Medya Akışı
+</h3>
+
+<div id="feed"></div>
+
 </div>
 
 </div>
 
 <script>
-document.addEventListener("DOMContentLoaded", () => {
 
-    const btn = document.querySelector(".btn-main");
+let total = 0;
+let risky = 0;
+let safe = 0;
 
-    if(!btn){
-        console.error("BUTON YOK");
+function updateStats(){
+
+document.getElementById("totalCount").innerText = total;
+document.getElementById("riskCount").innerText = risky;
+document.getElementById("safeCount").innerText = safe;
+
+}
+
+async function analyzeContent(){
+
+    const text = document.getElementById("text").value;
+
+    if(text.length < 10){
+        alert("İçerik çok kısa");
         return;
     }
 
-    btn.onclick = async () => {
+    const res = await fetch("/analyze",{
+        method:"POST",
+        headers:{
+            "Content-Type":"application/json"
+        },
+        body:JSON.stringify({
+            text:text
+        })
+    });
 
-        const text = document.querySelector("textarea").value;
+    const data = await res.json();
 
-        console.log("SEND:", text);
+    const risk = data.risk;
 
-        if(!text){
-            alert("Boş");
-            return;
+    document.getElementById("bar").style.width =
+        risk + "%";
+
+    let color = "#2ed573";
+
+    if(risk > 70){
+        color = "#ff4757";
+    }
+    else if(risk > 40){
+        color = "#f39c12";
+    }
+
+    document.getElementById("bar").style.background = color;
+
+    document.getElementById("resultText").innerText =
+        "Risk Skoru: " + risk + "%";
+
+    document.getElementById("status").innerText =
+        data.status;
+
+    document.getElementById("status").style.color =
+        color;
+
+    total++;
+
+    if(risk > 40){
+        risky++;
+    }else{
+        safe++;
+    }
+
+    updateStats();
+}
+
+async function loadFeed(){
+
+    const res = await fetch("/feed");
+
+    const data = await res.json();
+
+    let html = "";
+
+    data.forEach(item=>{
+
+        let icon = "🌐";
+
+        if(item.platform=="twitter"){
+            icon = "🐦";
         }
 
-        try {
-            const res = await fetch("/analyze", {
-                method: "POST",
-                headers: {"Content-Type":"application/json"},
-                body: JSON.stringify({ text })
-            });
-
-            const data = await res.json();
-
-            console.log("RESPONSE:", data);
-
-            document.getElementById("resultBox").innerHTML =
-                `Risk: ${data.risk}%<br>${data.why || ""}`;
-
-        } catch (e) {
-            console.error("HATA:", e);
+        if(item.platform=="instagram"){
+            icon = "📸";
         }
-    };
 
-});
+        if(item.platform=="facebook"){
+            icon = "📘";
+        }
+
+        if(item.platform=="youtube"){
+            icon = "▶️";
+        }
+
+        if(item.platform=="tiktok"){
+            icon = "🎵";
+        }
+
+        html += `
+
+        <div class="feed-item"
+        onclick="useFeed('${item.text}')">
+
+        <span class="feed-icon">${icon}</span>
+
+        ${item.text}
+
+        </div>
+
+        `;
+
+    });
+
+    document.getElementById("feed").innerHTML = html;
+}
+
+function useFeed(text){
+
+    document.getElementById("text").value = text;
+
+}
+
+loadFeed();
+
 </script>
 
 </body>
