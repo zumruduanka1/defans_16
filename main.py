@@ -7,69 +7,76 @@ from datetime import datetime
 app = Flask(__name__, template_folder='templates')
 CORS(app)
 
-# Ayarlar
-HF_TOKEN = os.getenv("HF_TOKEN")
-MAIL_USER = os.getenv("MAIL_USER")
-MAIL_PASS = os.getenv("MAIL_PASS")
-MAIL_TO = os.getenv("MAIL_TO")
-
+# Global İstatistikler
 stats = {"total": 4, "risk": 0, "safe": 1}
+sent_intel = set()
 
 def ai_engine(text):
-    risk = 25
-    if any(w in text.lower() for w in ["iddia", "yalan", "şok", "gizli", "sızıntı"]):
-        risk += 20
-    if HF_TOKEN:
+    risk = 20
+    scam_keywords = ["iddia", "yalan", "şok", "gizli", "sızıntı", "flaş", "gerçek mi"]
+    for word in scam_keywords:
+        if word in text.lower(): risk += 15
+    
+    hf_token = os.getenv("HF_TOKEN")
+    if hf_token:
         try:
             url = "https://api-inference.huggingface.co/models/facebook/bart-large-mnli"
-            headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+            headers = {"Authorization": f"Bearer {hf_token}"}
             payload = {"inputs": text, "parameters": {"candidate_labels": ["manipulative", "fact-based"]}}
             res = requests.post(url, headers=headers, json=payload, timeout=5).json()
-            if 'scores' in res: risk = int(res['scores'][0] * 100)
+            if 'scores' in res:
+                risk = int(res['scores'][0] * 100)
         except: pass
     return min(risk, 98)
 
-def send_report(text, risk):
-    if not MAIL_USER or not MAIL_PASS: return
+def send_mail(content, risk):
+    user = os.getenv("MAIL_USER")
+    pw = os.getenv("MAIL_PASS")
+    to = os.getenv("MAIL_TO")
+    if not user or not pw or risk < 30: return
     try:
-        msg = MIMEText(f"DEFANS PRO ANALİZ\n\nİçerik: {text}\nRisk: %{risk}", "plain", "utf-8")
-        msg["Subject"] = f"DEFANS BİLDİRİM: %{risk}"
-        msg["From"] = MAIL_USER
-        msg["To"] = MAIL_TO
+        msg = MIMEText(f"DEFANS PRO ANALİZ\n\nİçerik: {content}\nRisk Skoru: %{risk}", "plain", "utf-8")
+        msg["Subject"] = f"DEFANS RAPORU: %{risk}"
+        msg["From"] = user
+        msg["To"] = to
         server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
-        server.login(MAIL_USER, MAIL_PASS)
-        server.sendmail(MAIL_USER, [MAIL_TO], msg.as_string())
+        server.login(user, pw)
+        server.sendmail(user, [to], msg.as_string())
         server.quit()
     except: pass
 
 @app.route("/")
-def home(): return render_template("index.html")
+def home():
+    return render_template("index.html")
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
     global stats
-    text = request.json.get("text", "")
+    data = request.json
+    text = data.get("text", "")
     risk = ai_engine(text)
     stats["total"] += 1
     if risk > 45: stats["risk"] += 1
     else: stats["safe"] += 1
-    send_report(text, risk)
+    send_mail(text, risk)
     return jsonify({"text": text, "risk": risk, "stats": stats})
 
 @app.route("/feed")
 def feed():
-    # TikTok, Facebook ve X APISIZ Tarama
-    query = "site:tiktok.com OR site:facebook.com OR site:x.com 'iddia ediliyor'"
-    url = f"https://news.google.com/rss/search?q={query}&hl=tr"
+    # TikTok, Facebook, X ve Instagram Tarayıcı
+    query = "site:tiktok.com OR site:facebook.com OR site:x.com OR site:instagram.com 'iddia ediliyor' OR 'yalanlandı'"
+    url = f"https://news.google.com/rss/search?q={query}&hl=tr&gl=TR&ceid=TR:tr"
     results = []
     try:
-        r = requests.get(url, timeout=5)
-        root = ET.fromstring(r.content)
-        for item in root.findall('.//item')[:10]:
+        resp = requests.get(url, timeout=7)
+        root = ET.fromstring(resp.content)
+        for item in root.findall('.//item')[:12]:
             title = item.find('title').text.split(" - ")[0]
-            results.append({"text": title, "risk": ai_engine(title)})
+            risk = ai_engine(title)
+            results.append({"text": title, "risk": risk})
     except: pass
     return jsonify(results)
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
