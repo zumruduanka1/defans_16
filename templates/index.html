@@ -150,135 +150,85 @@
         .status-warning { background: rgba(227, 179, 65, 0.1); color: var(--warning); border: 1px solid var(--warning); }
         .status-success { background: rgba(35, 134, 54, 0.1); color: var(--success); border: 1px solid var(--success); }
 
-    </style>
-</head>
-<body>
+<style>
+    .analysis-item {
+        display: flex;
+        flex-direction: column; /* Haberler alt alta daha net görünsün */
+        gap: 8px;
+        padding: 20px;
+        border-bottom: 1px solid var(--border);
+        transition: 0.3s;
+    }
+    
+    .analysis-item:hover { background: rgba(255,255,255,0.02); }
 
-    <header>
-        <div class="logo">
-            <img src="https://img.icons8.com/color/48/shield.png" width="30"/>
-            DEFANS <span>PRO</span>
-        </div>
-        <div class="ai-badge">AI Powered</div>
-    </header>
+    .item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+    }
 
-    <div class="hero">
-        <h1>DEFANS<br>Dezenformasyon Erken Fark ve Analiz Sistemi</h1>
-        <p>Google Gemini AI ile haber ve içerikleri gerçek zamanlı analiz edin.<br>Yalan haberleri, manipülasyonu ve dezenformasyonu anında tespit edin.</p>
-    </div>
+    .item-text {
+        font-size: 14px;
+        line-height: 1.5;
+        color: #e6edf3;
+        white-space: normal; /* Metnin kesilmesini engeller, tam gösterir */
+        display: block;
+    }
 
-    <div class="stats-container">
-        <div class="stat-box">
-            <h2 id="s-total">4</h2>
-            <p>Toplam Analiz</p>
-        </div>
-        <div class="stat-box">
-            <h2 id="s-risk" style="color: var(--danger);">0</h2>
-            <p>Tehlikeli İçerik</p>
-        </div>
-        <div class="stat-box">
-            <h2 id="s-safe" style="color: var(--success);">1</h2>
-            <p>Güvenli İçerik</p>
-        </div>
-    </div>
+    .item-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 10px;
+    }
 
-    <div class="grid">
-        <div class="panel">
-            <div class="panel-header">🔍 YENİ ANALİZ</div>
-            <div class="tabs">
-                <div class="tab active">📄 Metin</div>
-                <div class="tab">🔗 URL</div>
-                <div class="tab">🖼️ Görsel</div>
-            </div>
+    .puan-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex: 1;
+    }
+
+    .puan-bar {
+        height: 4px;
+        background: #30363d;
+        border-radius: 2px;
+        flex: 1;
+        max-width: 100px;
+    }
+</style>
+
+<script>
+async function loadFeed() {
+    try {
+        const res = await fetch("/feed");
+        const data = await res.json();
+        let html = "";
+        data.forEach(item => {
+            const isRisk = item.risk > 45;
+            const statusClass = isRisk ? "status-warning" : "status-success";
+            const statusText = isRisk ? "▲ Şüpheli" : "✓ Güvenli";
             
-            <label>E-posta Adresiniz</label>
-            <input type="email" id="uEmail" value="omertayyipu@gmail.com">
-
-            <label>Analiz Edilecek Metin</label>
-            <textarea id="uText" placeholder="Haber metnini veya sosyal medya içeriğini buraya yapıştırın..."></textarea>
-
-            <button class="btn-analyze" onclick="startAnalysis()">
-                <i class="fa-solid fa-magnifying-glass"></i> Yapay Zeka Analizi Başlat
-            </button>
-        </div>
-
-        <div class="panel">
-            <div class="panel-header">📊 SON ANALİZLER</div>
-            <div style="display:grid; grid-template-columns: 2fr 1fr 1fr; font-size: 11px; color: var(--text-muted); margin-bottom: 15px; text-transform: uppercase;">
-                <div>İçerik</div>
-                <div>Puan</div>
-                <div>Durum</div>
-            </div>
-            <div class="analysis-list" id="feedArea">
-                <div style="text-align: center; color: var(--text-muted); padding: 50px;">
-                    <i class="fa-solid fa-spinner fa-spin"></i> Sosyal medya taranıyor...
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        async function startAnalysis() {
-            const text = document.getElementById("uText").value;
-            const email = document.getElementById("uEmail").value;
-            if(text.length < 5) return alert("Lütfen analiz için metin girin.");
-
-            const btn = document.querySelector(".btn-analyze");
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analiz Ediliyor...';
-            btn.disabled = true;
-
-            try {
-                const res = await fetch("/analyze", {
-                    method: "POST",
-                    headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({text: text, email: email})
-                });
-                const data = await res.json();
-                
-                // İstatistikleri Güncelle
-                document.getElementById("s-total").innerText = data.current_stats.total;
-                document.getElementById("s-risk").innerText = data.current_stats.risk;
-                document.getElementById("s-safe").innerText = data.current_stats.safe;
-
-                alert("Analiz tamamlandı ve raporunuz " + email + " adresine gönderildi!");
-            } catch (e) {
-                alert("Hata oluştu.");
-            } finally {
-                btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> Yapay Zeka Analizi Başlat';
-                btn.disabled = false;
-                loadFeed(); // Listeyi yenile
-            }
-        }
-
-        async function loadFeed() {
-            try {
-                const res = await fetch("/feed");
-                const data = await res.json();
-                let html = "";
-                data.forEach(item => {
-                    const isRisk = item.risk > 45;
-                    const statusClass = isRisk ? "status-warning" : "status-success";
-                    const statusText = isRisk ? "▲ Şüpheli" : "✓ Güvenli";
-                    
-                    html += `
-                        <div class="analysis-item">
-                            <div class="item-text" title="${item.text}">${item.text}</div>
+            html += `
+                <div class="analysis-item">
+                    <div class="item-text">${item.text}</div>
+                    <div class="item-footer">
+                        <div class="puan-container">
+                            <span style="font-size: 10px; color: var(--text-muted)">RİSK: %${item.risk}</span>
                             <div class="puan-bar">
-                                <div class="puan-fill" style="width: ${item.risk}%"></div>
+                                <div class="puan-fill" style="width: ${item.risk}%; background: ${isRisk ? 'var(--danger)' : 'var(--success)'}"></div>
                             </div>
-                            <div class="status-badge ${statusClass}">${statusText}</div>
                         </div>
-                    `;
-                });
-                document.getElementById("feedArea").innerHTML = html;
-            } catch (e) {
-                console.error("Akış yüklenemedi.");
-            }
-        }
-
-        // İlk yüklemede ve 2 dakikada bir güncelle
-        loadFeed();
-        setInterval(loadFeed, 120000);
-    </script>
-</body>
-</html>
+                        <div class="status-badge ${statusClass}">${statusText}</div>
+                    </div>
+                </div>
+            `;
+        });
+        document.getElementById("feedArea").innerHTML = html;
+    } catch (e) {
+        console.error("Yükleme hatası");
+    }
+}
+</script>
