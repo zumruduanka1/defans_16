@@ -11,126 +11,126 @@ app = Flask(__name__)
 CORS(app)
 
 # =====================================================
-# ENV - Render panelinden girilecek
+# ENV YAPILANDIRMASI
 # =====================================================
-HF_TOKEN = os.getenv("HF_TOKEN")
-NEWS_API_KEY = os.getenv("NEWS_API_KEY")
+# MAIL_USER: Gönderen Gmail (Uygulama şifresi alınmış olan)
+# MAIL_PASS: Gönderen Gmail'in 16 haneli uygulama şifresi
+# MAIL_TO: Raporların gideceği DİĞER hesap adresi
 MAIL_USER = os.getenv("MAIL_USER")
 MAIL_PASS = os.getenv("MAIL_PASS")
-MAIL_TO = os.getenv("MAIL_TO")
+MAIL_TO = os.getenv("MAIL_TO") 
+NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 
 # =====================================================
-# GELİŞMİŞ MAİL SİSTEMİ
+# ÖZEL MAİL GÖNDERİM SİSTEMİ
 # =====================================================
-def send_report(content, risk_score, platform="Sosyal Medya"):
-    # Mail bilgileri eksikse veya risk çok düşükse (spam engelleme) gönderme
-    if not MAIL_USER or risk_score < 30:
+def send_report(content, risk_score, platform="Sosyal Medya Takibi"):
+    if not MAIL_USER or not MAIL_TO:
         return
+    
     try:
-        subject = f"⚠️ DEFANS PRO TESPİTİ: %{risk_score} Risk [{platform}]"
+        subject = f"⚠️ RİSKLİ İÇERİK: %{risk_score} [{platform}]"
         body = f"""
-        Tarih: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        DEFANS PRO - OTOMATİK RAPOR
+        -------------------------------------------
+        Tespit Zamanı: {datetime.now().strftime('%d.%m.%Y %H:%M:%S')}
         Kaynak: {platform}
         Analiz Skoru: %{risk_score}
         
         İçerik:
-        -------------------------------------------
-        {content}
-        -------------------------------------------
+        "{content}"
         
-        Bu rapor DEFANS PRO tarafından otomatik oluşturulmuştur.
+        -------------------------------------------
+        Bu içerik sistem tarafından otomatik olarak riskli kategorisine alınmıştır.
         """
+        
         msg = MIMEText(body, "plain", "utf-8")
         msg["Subject"] = subject
-        msg["From"] = MAIL_USER
+        msg["From"] = f"DEFANS PRO ANALİZ <{MAIL_USER}>"
         msg["To"] = MAIL_TO
 
         server = smtplib.SMTP("smtp.gmail.com", 587)
         server.starttls()
         server.login(MAIL_USER, MAIL_PASS)
-        server.sendmail(MAIL_USER, MAIL_TO, msg.as_string())
+        server.sendmail(MAIL_USER, [MAIL_TO], msg.as_string())
         server.quit()
     except Exception as e:
-        print(f"Mail Hatası: {e}")
+        print(f"Mail gönderim hatası: {e}")
 
 # =====================================================
-# DEZENFORMASYON ANALİZ MOTORU
+# ANALİZ MOTORU
 # =====================================================
-def analyze_content(text):
-    text = text.lower().strip()
-    if len(text) < 5: return 0, "Geçersiz"
-
-    score = random.randint(15, 35) # Başlangıç riski
+def get_risk_analysis(text):
+    text = text.lower()
+    score = random.randint(15, 40)
     
-    # Yalan haber tetikleyicileri
-    triggers = {
-        "şok": 20, "iddia": 15, "sızdırıldı": 20, "gizlenen": 15, 
-        "deepfake": 35, "öldü": 30, "manipülasyon": 25, "ifşa": 20,
-        "aslında": 10, "kimse bilmiyor": 20, "acil paylaş": 25
-    }
-    
-    for word, boost in triggers.items():
-        if word in text: score += boost
-
-    # Link içeren paylaşımlar sosyal medyada daha risklidir
-    if "http" in text or "t.co" in text: score += 15
-    
+    # Sosyal medya yalan haber anahtar kelimeleri
+    bad_words = ["şok", "iddia", "gizlenen", "gerçekler", "patladı", "öldü", "flaş", "deepfake", "yapay zeka", "video kaydı"]
+    for word in bad_words:
+        if word in text: score += 15
+        
+    if "http" in text or "t.co" in text: score += 10
     score = min(score, 100)
     
-    if score > 75: status = "🚨 Yüksek Dezenformasyon Riski"
-    elif score > 45: status = "⚠️ Şüpheli İçerik"
-    else: status = "✅ Güvenli Görünüyor"
+    status = "✅ Güvenli"
+    if score > 70: status = "🚨 Dezenformasyon / Yüksek Risk"
+    elif score > 45: status = "⚠️ Şüpheli / Doğrulanmalı"
     
     return score, status
 
 # =====================================================
-# ROUTES
+# VERİ AKIŞI (Zenginleştirilmiş Sosyal Medya Kaynakları)
 # =====================================================
+@app.route("/feed")
+def feed():
+    final_feed = []
+    
+    # 1. Kaynak: Haber API (Varsa)
+    if NEWS_API_KEY:
+        try:
+            r = requests.get(f"https://newsapi.org/v2/top-headlines?country=tr&apiKey={NEWS_API_KEY}", timeout=5)
+            articles = r.json().get("articles", [])
+            for a in articles[:5]:
+                s, _ = get_risk_analysis(a['title'])
+                final_feed.append({"text": a['title'], "platform": "Haber Kaynağı", "risk": s})
+        except: pass
+
+    # 2. Kaynak: Sosyal Medya Simülasyon Verileri (Veri azlığı için ekleme)
+    sim_data = [
+        "X/Twitter: Yeni bir manipülasyon kampanyası tespit edildi.",
+        "WhatsApp: 'Hastanelerde yer kalmadı' iddiası hızla yayılıyor.",
+        "TikTok: Yapay zeka ile üretilmiş siyasetçi videosu gündemde.",
+        "Instagram: Dolandırıcılık amaçlı 'Bedava bilet' paylaşımları arttı.",
+        "Facebook: Eski bir olay yeniymiş gibi servis ediliyor.",
+        "Telegram: Kripto varlıklarla ilgili asılsız panik haberleri.",
+        "Sosyal Medya: Seçim sonuçlarını etkilemeye yönelik bot hesap faaliyetleri.",
+        "X: Onaylı hesaplardan yayılan sahte kaza görüntüleri."
+    ]
+    
+    for item in sim_data:
+        s, _ = get_risk_analysis(item)
+        final_feed.append({"text": item, "platform": "Sosyal Medya", "risk": s})
+
+    # Her veri çekildiğinde içlerinden en riskli olanı mail olarak raporla
+    riskiest = max(final_feed, key=lambda x: x['risk'])
+    if riskiest['risk'] > 60:
+        send_report(riskiest['text'], riskiest['risk'], "Otomatik Tarama")
+
+    return jsonify(final_feed)
+
 @app.route("/")
-def home():
-    return render_template("index.html")
+def index(): return render_template("index.html")
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
-    data = request.get_json()
+    data = request.json
     content = data.get("text", "")
-    risk, status = analyze_content(content)
+    risk, status = get_risk_analysis(content)
     
-    # Her manuel analizi mail at
-    send_report(content, risk, "Kullanıcı Sorgusu")
+    # Manuel analizi her zaman mail at (İstediğin özellik)
+    send_report(content, risk, "Kullanıcı Manuel Analizi")
     
     return jsonify({"risk": risk, "status": status})
-
-@app.route("/feed")
-def feed():
-    social_posts = []
-    
-    # API'den haberleri çekip "Sosyal Medya" formatına sokuyoruz
-    if NEWS_API_KEY:
-        try:
-            url = f"https://newsapi.org/v2/top-headlines?country=tr&apiKey={NEWS_API_KEY}"
-            r = requests.get(url, timeout=5)
-            articles = r.json().get("articles", [])
-            for a in articles[:10]:
-                title = a.get('title', '')
-                risk, _ = analyze_content(title)
-                
-                post_data = {"text": title, "platform": "Sosyal Medya", "risk": risk}
-                social_posts.append(post_data)
-                
-                # Her bulunan akış haberini mail olarak yolla
-                send_report(title, risk, "Canlı Akış")
-        except: pass
-
-    # Yedek veri (API çalışmazsa)
-    if not social_posts:
-        social_posts = [
-            {"text": "X platformunda yayılan yeni bir manipülasyon kampanyası tespit edildi.", "platform": "Sosyal Medya", "risk": 85},
-            {"text": "WhatsApp gruplarında paylaşılan ses kaydı asılsız çıktı.", "platform": "Sosyal Medya", "risk": 90}
-        ]
-        for p in social_posts: send_report(p['text'], p['risk'], "Yedek Akış")
-
-    return jsonify(social_posts)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))

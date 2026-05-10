@@ -3,323 +3,108 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DEFANS PRO | Sosyal Medya Analiz Sistemi</title>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <title>DEFANS PRO | Sosyal Medya Analizi</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
-
     <style>
-        :root {
-            --bg: #080a0f;
-            --card: #161b22;
-            --border: #21262d;
-            --text: #ffffff;
-            --gray: #8b949e;
-            --purple: #7d5fff;
-            --blue: #3d5afe;
-            --danger: #ff4757;
-            --success: #2ed573;
-            --warning: #f39c12;
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            background: radial-gradient(circle at top, #161b22, #080a0f);
-            color: var(--text);
-            font-family: 'Inter', sans-serif;
-            min-height: 100vh;
-            padding: 20px;
-        }
-
+        :root { --bg: #080a0f; --card: #161b22; --border: #21262d; --blue: #3d5afe; --purple: #7d5fff; --danger: #ff4757; --success: #2ed573; --gray: #8b949e; }
+        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 20px; margin: 0; }
         .container { max-width: 1200px; margin: auto; }
-
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 50px;
-        }
-
-        .logo { font-size: 24px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
-        .logo i { color: var(--blue); }
-        
-        .badge {
-            padding: 8px 16px;
-            border-radius: 20px;
-            background: rgba(61, 90, 254, .1);
-            border: 1px solid var(--border);
-            color: #58a6ff;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .hero { text-align: center; margin-bottom: 40px; }
-        .hero h1 { font-size: 64px; font-weight: 800; letter-spacing: -2px; }
-        .hero p { color: var(--gray); margin-top: 10px; font-size: 18px; }
-
-        .stats {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-bottom: 40px;
-            flex-wrap: wrap;
-        }
-
-        .stat-card {
-            background: var(--card);
-            border: 1px solid var(--border);
-            padding: 25px;
-            border-radius: 20px;
-            min-width: 180px;
-            text-align: center;
-        }
-
-        .stat-card h2 { font-size: 36px; margin-bottom: 5px; }
-        .stat-card span { color: var(--gray); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
-
-        .grid {
-            display: grid;
-            grid-template-columns: 1.2fr 0.8fr;
-            gap: 25px;
-        }
-
-        .card {
-            background: rgba(22, 27, 34, .6);
-            border: 1px solid var(--border);
-            border-radius: 24px;
-            padding: 30px;
-            backdrop-filter: blur(15px);
-        }
-
-        h3 { font-size: 14px; color: var(--gray); margin-bottom: 25px; text-transform: uppercase; letter-spacing: 1.5px; display: flex; align-items: center; gap: 10px; }
-
-        label { font-size: 12px; color: var(--gray); display: block; margin-bottom: 10px; font-weight: 600; }
-
-        textarea {
-            width: 100%;
-            background: #ebf1f9;
-            border: none;
-            border-radius: 16px;
-            padding: 18px;
-            margin-bottom: 20px;
-            font-size: 15px;
-            color: #080a0f;
-            font-family: inherit;
-            height: 150px;
-            resize: none;
-        }
-
-        button {
-            width: 100%;
-            padding: 18px;
-            border: none;
-            border-radius: 16px;
-            background: linear-gradient(90deg, var(--blue), var(--purple));
-            color: white;
-            font-size: 16px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        button:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(61, 90, 254, 0.4); }
-
-        .result-box {
-            margin-top: 25px;
-            padding: 25px;
-            background: #0d1117;
-            border-radius: 18px;
-            border: 1px solid var(--border);
-            display: none;
-        }
-
-        .progress { height: 10px; background: #222; border-radius: 10px; margin: 20px 0; overflow: hidden; }
-        .bar { height: 100%; width: 0%; transition: 1.2s cubic-bezier(0.075, 0.82, 0.165, 1); }
-
-        .status-text { text-align: center; font-size: 22px; font-weight: 800; margin-top: 10px; }
-
-        /* FEED SECTION */
-        #feed-area {
-            max-height: 550px;
-            overflow-y: auto;
-            padding-right: 5px;
-        }
-
-        #feed-area::-webkit-scrollbar { width: 4px; }
-        #feed-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
-
-        .feed-item {
-            padding: 18px;
-            border-bottom: 1px solid var(--border);
-            cursor: pointer;
-            transition: 0.2s;
-            display: flex;
-            align-items: flex-start;
-            gap: 15px;
-        }
-
-        .feed-item:hover { background: rgba(255, 255, 255, 0.04); border-radius: 12px; }
-        .feed-icon { font-size: 20px; color: var(--blue); margin-top: 3px; }
-        .feed-content { flex: 1; }
-        .feed-text { font-size: 14px; color: #e1e1e1; line-height: 1.5; margin-bottom: 8px; }
-        .feed-meta { font-size: 11px; display: flex; justify-content: space-between; font-weight: 600; }
-
-        @media (max-width: 992px) {
-            .grid { grid-template-columns: 1fr; }
-            .hero h1 { font-size: 42px; }
-        }
+        header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid var(--border); margin-bottom: 40px; }
+        .logo { font-size: 24px; font-weight: 800; display: flex; align-items: center; gap: 10px; }
+        .grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 25px; }
+        .card { background: var(--card); border: 1px solid var(--border); padding: 30px; border-radius: 24px; }
+        textarea { width: 100%; background: #ebf1f9; border: none; padding: 15px; border-radius: 15px; margin-bottom: 20px; color: #111; height: 150px; font-family: inherit; }
+        button { width: 100%; padding: 18px; border: none; border-radius: 15px; background: linear-gradient(90deg, var(--blue), var(--purple)); color: white; font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 16px; }
+        button:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(61,90,254,0.4); }
+        .result-box { margin-top: 25px; padding: 20px; background: #0d1117; border-radius: 15px; border: 1px solid var(--border); display: none; text-align: center; }
+        .progress { height: 10px; background: #222; border-radius: 5px; margin: 15px 0; overflow: hidden; }
+        .bar { height: 100%; width: 0%; transition: 1s; background: var(--blue); }
+        .feed-item { padding: 15px; border-bottom: 1px solid var(--border); cursor: pointer; display: flex; gap: 15px; transition: 0.2s; }
+        .feed-item:hover { background: rgba(255,255,255,0.05); }
+        .risk-badge { font-size: 10px; padding: 3px 8px; border-radius: 5px; font-weight: bold; }
+        @media (max-width: 992px) { .grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
-
     <div class="container">
         <header>
             <div class="logo"><i class="fa-solid fa-shield-halved"></i> DEFANS PRO</div>
-            <div class="badge">SOSYAL MEDYA TAKİBİ AKTİF</div>
+            <div style="color: var(--success); font-weight: bold;"><i class="fa-solid fa-circle-dot"></i> CANLI TAKİP</div>
         </header>
-
-        <section class="hero">
-            <h1>DEFANS</h1>
-            <p>Yapay Zeka Destekli Sosyal Medya Yalan Haber Analiz Sistemi</p>
-        </section>
-
-        <div class="stats">
-            <div class="stat-card">
-                <h2 id="total-count">0</h2>
-                <span>Toplam Tarama</span>
-            </div>
-            <div class="stat-card">
-                <h2 id="risk-count" style="color: var(--danger)">0</h2>
-                <span>Riskli İçerik</span>
-            </div>
-            <div class="stat-card">
-                <h2 id="safe-count" style="color: var(--success)">0</h2>
-                <span>Güvenli Tespit</span>
-            </div>
-        </div>
 
         <div class="grid">
             <div class="card">
-                <h3><i class="fa-solid fa-wand-magic-sparkles"></i> MANUEL ANALİZ VE RAPORLAMA</h3>
-                <label>Analiz Edilecek İçerik (Tweet, Link veya Mesaj)</label>
-                <textarea id="u-text" placeholder="Şüpheli bulduğunuz içeriği buraya yapıştırın. Sistem analizi tamamlayıp otomatik olarak mail ile raporlayacaktır..."></textarea>
-                
-                <button onclick="performAnalysis()">
-                    <i class="fa-solid fa-magnifying-glass"></i> ŞİMDİ ANALİZ ET VE BİLDİR
-                </button>
+                <h3 style="color: var(--gray); margin-bottom: 20px;"><i class="fa-solid fa-bolt"></i> ANLIK ANALİZ VE RAPORLAMA</h3>
+                <textarea id="textInput" placeholder="Sosyal medyadan bir metin veya link yapıştırın. Analiz sonuçları anında mail ile iletilecektir..."></textarea>
+                <button onclick="runAnalysis()">ANALİZ ET VE BİLDİR</button>
 
-                <div class="result-box" id="res-box">
-                    <div id="res-score-text" style="text-align: center; color: var(--gray); font-weight: 600;">Skor Hesaplanıyor...</div>
-                    <div class="progress"><div class="bar" id="res-bar"></div></div>
-                    <div class="status-text" id="res-status"></div>
+                <div class="result-box" id="resBox">
+                    <div id="resTitle" style="font-size: 14px; color: var(--gray);">Risk Durumu Bekleniyor...</div>
+                    <div class="progress"><div id="resBar" class="bar"></div></div>
+                    <div id="resStatus" style="font-size: 22px; font-weight: 800;"></div>
                 </div>
             </div>
 
             <div class="card">
-                <h3><i class="fa-solid fa-satellite-dish"></i> CANLI SOSYAL MEDYA VERİLERİ</h3>
-                <div id="feed-area">
-                    <div style="text-align: center; padding: 40px; color: var(--gray);">
-                        <i class="fa-solid fa-spinner fa-spin"></i><br><br>
-                        Sosyal medya ağları taranıyor...
-                    </div>
+                <h3 style="color: var(--gray); margin-bottom: 20px;"><i class="fa-solid fa-rss"></i> SOSYAL MEDYA KAYNAKLARI</h3>
+                <div id="feedList" style="max-height: 500px; overflow-y: auto;">
+                    <p style="text-align: center; color: var(--gray);">Ağlar taranıyor...</p>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        let stats = { total: 0, risk: 0, safe: 0 };
-
-        async function performAnalysis() {
-            const text = document.getElementById("u-text").value;
-            if (text.trim().length < 5) {
-                alert("Lütfen geçerli bir içerik girin.");
-                return;
-            }
-
-            const box = document.getElementById("res-box");
-            const bar = document.getElementById("res-bar");
-            const status = document.getElementById("res-status");
-            const scoreText = document.getElementById("res-score-text");
-
-            box.style.display = "block";
-            status.innerText = "İşleniyor...";
-            bar.style.width = "15%";
-            bar.style.background = "var(--blue)";
-
-            try {
-                const response = await fetch("/analyze", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ text: text })
-                });
-                const data = await response.json();
-
-                // Görsel Güncelleme
-                bar.style.width = data.risk + "%";
-                scoreText.innerText = "Risk Skoru: %" + data.risk;
-                status.innerText = data.status;
-                
-                let color = "var(--success)";
-                if (data.risk > 70) color = "var(--danger)";
-                else if (data.risk > 45) color = "var(--warning)";
-                
-                bar.style.background = color;
-                status.style.color = color;
-
-                // İstatistikleri Güncelle
-                stats.total++;
-                if (data.risk > 45) stats.risk++; else stats.safe++;
-                
-                document.getElementById("total-count").innerText = stats.total;
-                document.getElementById("risk-count").innerText = stats.risk;
-                document.getElementById("safe-count").innerText = stats.safe;
-
-            } catch (error) {
-                status.innerText = "Hata oluştu!";
-                status.style.color = "red";
-            }
+        async function runAnalysis() {
+            const text = document.getElementById("textInput").value;
+            if(text.length < 5) return alert("İçerik çok kısa!");
+            
+            document.getElementById("resBox").style.display = "block";
+            document.getElementById("resStatus").innerText = "İnceleniyor...";
+            
+            const response = await fetch("/analyze", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({text})
+            });
+            const data = await response.json();
+            
+            document.getElementById("resBar").style.width = data.risk + "%";
+            document.getElementById("resStatus").innerText = data.status;
+            document.getElementById("resTitle").innerText = "Raporlanan Risk Skoru: %" + data.risk;
+            
+            let color = "var(--success)";
+            if(data.risk > 70) color = "var(--danger)";
+            else if(data.risk > 45) color = "var(--warning)";
+            document.getElementById("resBar").style.background = color;
+            document.getElementById("resStatus").style.color = color;
         }
 
         async function updateFeed() {
             try {
-                const response = await fetch("/feed");
-                const data = await response.json();
+                const res = await fetch("/feed");
+                const data = await res.json();
                 let html = "";
-
                 data.forEach(item => {
-                    const riskColor = item.risk > 65 ? 'var(--danger)' : (item.risk > 40 ? 'var(--warning)' : 'var(--success)');
-                    
+                    const color = item.risk > 60 ? 'var(--danger)' : 'var(--success)';
                     html += `
-                        <div class="feed-item" onclick="selectFeedItem('${item.text.replace(/'/g, "\\'")}')">
-                            <div class="feed-icon"><i class="fa-solid fa-hashtag"></i></div>
-                            <div class="feed-content">
-                                <div class="feed-text">${item.text}</div>
-                                <div class="feed-meta">
-                                    <span style="color: var(--blue)">${item.platform.toUpperCase()}</span>
-                                    <span style="color: ${riskColor}">Risk: %${item.risk}</span>
+                        <div class="feed-item" onclick="document.getElementById('textInput').value='${item.text.replace(/'/g,"")}';">
+                            <i class="fa-solid fa-hashtag" style="color: var(--blue)"></i>
+                            <div>
+                                <div style="font-size: 13px;">${item.text}</div>
+                                <div style="font-size: 10px; margin-top: 5px;">
+                                    <span style="color: var(--gray)">${item.platform}</span> | 
+                                    <span style="color: ${color}">Risk: %${item.risk}</span>
                                 </div>
                             </div>
-                        </div>
-                    `;
+                        </div>`;
                 });
-                document.getElementById("feed-area").innerHTML = html || "Yeni veri bulunamadı.";
-            } catch (err) {
-                document.getElementById("feed-area").innerHTML = "Veri akışı şu an sağlanamıyor.";
-            }
+                document.getElementById("feedList").innerHTML = html;
+            } catch (e) { document.getElementById("feedList").innerText = "Veri akışında hata."; }
         }
-
-        function selectFeedItem(text) {
-            document.getElementById("u-text").value = text;
-            window.scrollTo({ top: 350, behavior: 'smooth' });
-        }
-
-        // İlk veri yüklemesi
         updateFeed();
-        
-        // 2 dakikada bir otomatik yenileme
-        setInterval(updateFeed, 120000);
+        setInterval(updateFeed, 60000);
     </script>
 </body>
 </html>
