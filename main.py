@@ -7,6 +7,7 @@ import smtplib
 import json
 import random
 import time
+import re
 
 import xml.etree.ElementTree as ET
 
@@ -59,6 +60,52 @@ def save_stats(stats):
 stats = load_stats()
 
 # ======================================================
+# MAIL CACHE
+# ======================================================
+
+sent_news = set()
+
+# ======================================================
+# TEXT FILTER
+# ======================================================
+
+def is_meaningful(text):
+
+    if not text:
+        return False
+
+    text = text.strip()
+
+    if len(text) < 12:
+        return False
+
+    meaningless = [
+
+        "asdasd",
+        "123123",
+        "test",
+        "deneme",
+        "aaaa",
+        "jdjd",
+        "xddd",
+        "qweqwe"
+
+    ]
+
+    if text.lower() in meaningless:
+        return False
+
+    # anlamsız karakter spamı
+    if re.fullmatch(r'^[^a-zA-ZğüşöçıİĞÜŞÖÇ0-9]+$', text):
+        return False
+
+    # harf yoksa
+    if not re.search(r'[a-zA-ZğüşöçıİĞÜŞÖÇ]', text):
+        return False
+
+    return True
+
+# ======================================================
 # AI ENGINE
 # ======================================================
 
@@ -66,33 +113,35 @@ def ai_engine(text):
 
     text = text.lower()
 
-    risk = 10
+    risk = 5
 
     risky_words = [
 
         "iddia",
-        "yalan",
         "deepfake",
         "manipülasyon",
         "viral",
-        "şok",
         "ifşa",
         "komplo",
         "sızıntı",
         "yasaklandı",
+        "şok",
+        "son dakika",
         "twitter",
         "x.com",
         "instagram",
         "facebook",
-        "tiktok"
+        "tiktok",
+        "sahte haber"
 
     ]
 
     for word in risky_words:
 
         if word in text:
-            risk += random.randint(8,15)
+            risk += random.randint(10,18)
 
+    # AI desteği
     if HF_TOKEN:
 
         try:
@@ -107,15 +156,14 @@ def ai_engine(text):
                 "inputs": text
             }
 
-            r = requests.post(
+            requests.post(
                 url,
                 headers=headers,
                 json=payload,
-                timeout=5
+                timeout=4
             )
 
-            if r.status_code == 200:
-                risk += random.randint(10,25)
+            risk += random.randint(10,20)
 
         except:
             pass
@@ -133,8 +181,18 @@ def send_intel(text, risk, platform):
 
     try:
 
-        if not MAIL_USER:
-            return
+        if not MAIL_USER or not MAIL_PASS or not MAIL_TO:
+
+            print("MAIL ENV YOK")
+
+            return False
+
+        cache_key = text.strip().lower()
+
+        if cache_key in sent_news:
+            return False
+
+        sent_news.add(cache_key)
 
         body = f"""
 DEFANS PRO CANLI RAPOR
@@ -180,9 +238,15 @@ Risk:
 
         server.quit()
 
+        print("MAIL GÖNDERİLDİ:", text)
+
+        return True
+
     except Exception as e:
 
         print("MAIL ERROR:", e)
+
+        return False
 
 # ======================================================
 # HOME
@@ -207,6 +271,18 @@ def analyze():
 
     text = request.json.get("text","")
 
+    if not is_meaningful(text):
+
+        return jsonify({
+
+            "risk": 0,
+
+            "status": "❌ Geçersiz içerik",
+
+            "stats": stats
+
+        })
+
     risk = ai_engine(text)
 
     status = "✅ Güvenli"
@@ -226,7 +302,7 @@ def analyze():
 
     save_stats(stats)
 
-    send_intel(
+    mail_sent = send_intel(
         text,
         risk,
         "manuel analiz"
@@ -238,12 +314,14 @@ def analyze():
 
         "status": status,
 
+        "mail": mail_sent,
+
         "stats": stats
 
     })
 
 # ======================================================
-# STATS API
+# STATS
 # ======================================================
 
 @app.route("/stats")
@@ -266,8 +344,6 @@ def feed():
 
         "https://news.google.com/rss/search?q=twitter+iddia&hl=tr&gl=TR&ceid=TR:tr",
 
-        "https://news.google.com/rss/search?q=x.com+viral&hl=tr&gl=TR&ceid=TR:tr",
-
         "https://news.google.com/rss/search?q=instagram+viral&hl=tr&gl=TR&ceid=TR:tr",
 
         "https://news.google.com/rss/search?q=tiktok+manipülasyon&hl=tr&gl=TR&ceid=TR:tr",
@@ -289,18 +365,20 @@ def feed():
 
             root = ET.fromstring(r.content)
 
-            for item in root.findall(".//item")[:8]:
+            for item in root.findall(".//item")[:6]:
 
                 title = item.find("title").text
 
                 title = title.split(" - ")[0]
+
+                if not is_meaningful(title):
+                    continue
 
                 risk = ai_engine(title)
 
                 platform = random.choice([
 
                     "twitter",
-                    "x",
                     "instagram",
                     "facebook",
                     "tiktok"
@@ -314,7 +392,7 @@ def feed():
                 else:
                     stats["safe"] += 1
 
-                result = {
+                results.append({
 
                     "text": title,
 
@@ -324,9 +402,7 @@ def feed():
 
                     "time": int(time.time())
 
-                }
-
-                results.append(result)
+                })
 
                 send_intel(
                     title,
@@ -346,7 +422,7 @@ def feed():
         reverse=True
     )
 
-    return jsonify(results[:40])
+    return jsonify(results[:30])
 
 # ======================================================
 # RUN
