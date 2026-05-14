@@ -28,6 +28,7 @@ def save_data(filename, data):
         with open(filename, "w", encoding="utf-8") as f: json.dump(data, f)
     except: pass
 
+# Hafızayı Yükle
 stats = load_data("stats.txt", {"total": 0, "risk": 0, "safe": 0})
 history = load_data("history.txt", [])
 
@@ -37,11 +38,15 @@ history = load_data("history.txt", [])
 def ai_engine(text):
     text = text.lower()
     risk = random.randint(10, 20)
+    
     triggers = ["iddia", "yalan", "sahte", "sızıntı", "ifşa", "manipülasyon", "şok", "gizli", "operasyon"]
     for word in triggers:
-        if word in text: risk += random.randint(30, 45)
+        if word in text:
+            risk += random.randint(30, 45)
+    
     if text.isupper(): risk += 15
     if "!!!" in text: risk += 10
+    
     return min(max(risk, 1), 99)
 
 # ======================================================
@@ -50,25 +55,28 @@ def ai_engine(text):
 def send_intel(text, risk, platform):
     global history
     if not MAIL_USER or not MAIL_PASS or not MAIL_TO: return False
-    
+
+    # Tekrar engelleme (İlk 50 karakter)
     fingerprint = text.strip().lower()[:50]
     if fingerprint in history: return False
 
     try:
         msg = MIMEText(f"Platform: {platform.upper()}\nRisk: %{risk}\nİçerik: {text}", "plain", "utf-8")
-        msg["Subject"] = f"DEFANS TESPİT [%{risk}]"
+        msg["Subject"] = f"DEFANS TESPİT [%{risk}] - {platform.upper()}"
         msg["From"], msg["To"] = MAIL_USER, MAIL_TO
-        
+
         server = smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10)
         server.login(MAIL_USER, MAIL_PASS)
         server.sendmail(MAIL_USER, MAIL_TO, msg.as_string())
         server.quit()
 
+        # Hafızaya ekle
         history.append(fingerprint)
         if len(history) > 100: history.pop(0)
         save_data("history.txt", history)
         return True
-    except:
+    except Exception as e:
+        print(f"BAĞLANTI HATASI: {e}")
         return False
 
 # ======================================================
@@ -89,6 +97,7 @@ def analyze():
     if len(text.strip()) < 5: return jsonify({"risk":0, "status":"Geçersiz", "stats":stats})
 
     risk = ai_engine(text)
+    # %60 Sınırı (Altı güvenli, üstü riskli)
     status = "🚨 Yüksek Risk" if risk >= 75 else ("⚠️ Şüpheli" if risk >= 60 else "✅ Güvenli")
 
     stats["total"] += 1
@@ -96,6 +105,7 @@ def analyze():
     else: stats["safe"] += 1
     save_data("stats.txt", stats)
 
+    # Her analizi mail at
     send_intel(text, risk, "Manuel Analiz")
     return jsonify({"risk": risk, "status": status, "stats": stats})
 
@@ -103,7 +113,14 @@ def analyze():
 def feed():
     global stats
     results = []
-    urls = ["https://news.google.com/rss/search?q=twitter+iddia&hl=tr"]
+    # Genişletilmiş RSS Araması
+    urls = [
+        "https://news.google.com/rss/search?q=twitter+iddia&hl=tr",
+        "https://news.google.com/rss/search?q=tiktok+yalan+haber&hl=tr"
+    ]
+    
+    platforms = ["Twitter", "Instagram", "Facebook", "TikTok"]
+
     for url in urls:
         try:
             r = requests.get(url, timeout=5)
@@ -111,24 +128,27 @@ def feed():
             for item in root.findall(".//item")[:15]:
                 title = item.find("title").text.split(" - ")[0]
                 risk = ai_engine(title)
+                
                 if risk >= 50:
-                    platform = random.choice(["Twitter", "Instagram", "Facebook", "TikTok"])
-                    results.append({"text": title, "risk": risk, "platform": platform})
-                    
+                    platform = random.choice(platforms)
                     fingerprint = title.strip().lower()[:50]
+                    
                     if fingerprint not in history:
                         send_intel(title, risk, platform)
                         stats["total"] += 1
                         if risk >= 60: stats["risk"] += 1
                         else: stats["safe"] += 1
+                        
+                    results.append({"text": title, "risk": risk, "platform": platform})
         except: pass
+    
     save_data("stats.txt", stats)
     return jsonify(sorted(results, key=lambda x: x["risk"], reverse=True))
 
 @app.route("/mailtest")
 def mailtest():
     ok = send_intel("Sistem Test Mesajı", 100, "TEST")
-    return "MAIL BASARILI" if ok else "MAIL BASARISIZ"
+    return "MAIL BASARILI" if ok else "MAIL BASARISIZ (Loglara ve Şifreye Bak)"
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
