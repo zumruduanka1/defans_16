@@ -89,7 +89,7 @@ def ai_engine(text):
     if HF_TOKEN:
         try:
             url = "https://api-inference.huggingface.co/models/facebook/bart-large-mnli"
-            headers = {"Authorization": f: "Bearer {HF_TOKEN}"}
+            headers = {"Authorization": f"Bearer {HF_TOKEN}"}
             payload = {"inputs": text, "parameters": {"candidate_labels": ["fake", "real"]}}
             # Gerçek bir AI sorgusu yapılıyor
             requests.post(url, headers=headers, json=payload, timeout=4)
