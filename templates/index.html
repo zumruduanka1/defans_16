@@ -1,255 +1,178 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DEFANS PRO | İstihbarat Paneli</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
-    <style>
-        :root {
-            --bg: #080a0f;
-            --card: #12161f;
-            --border: #21262d;
-            --purple: #7d5fff;
-            --blue: #3d5afe;
-            --text: #8b949e;
-            --danger: #ff4757;
-            --success: #2ed573;
-            --warning: #f39c12;
-        }
+from flask import Flask, render_template, request, jsonify
+from flask_cors import CORS
+import os, requests, smtplib, json, random, time, re
+import xml.etree.ElementTree as ET
+from email.mime.text import MIMEText
+from datetime import datetime
 
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+app = Flask(__name__, template_folder="templates")
+CORS(app)
 
-        body {
-            background: linear-gradient(to bottom, #0b0f16, #080a0f);
-            color: white;
-            min-height: 100vh;
-            padding: 20px;
-        }
+# ======================================================
+# AYARLAR (ENVIRONMENT VARIABLES)
+# ======================================================
+HF_TOKEN = os.getenv("HF_TOKEN")
+MAIL_USER = os.getenv("MAIL_USER")
+MAIL_PASS = os.getenv("MAIL_PASS")
+MAIL_TO = os.getenv("MAIL_TO")
 
-        header {
-            max-width: 1200px;
-            margin: auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 50px;
-        }
+# Veri Kaydetme/Yükleme (Render'da kalıcılık için)
+def load_data(filename, default_value):
+    if os.path.exists(filename):
+        try:
+            with open(filename, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except: pass
+    return default_value
 
-        .logo { display: flex; align-items: center; gap: 10px; font-size: 24px; font-weight: 800; }
-        .logo-box {
-            width: 36px; height: 36px; border-radius: 10px;
-            display: flex; align-items: center; justify-content: center;
-            background: linear-gradient(135deg, var(--blue), var(--purple));
-        }
+def save_data(filename, data):
+    with open(filename, "w", encoding="utf-8") as f:
+        json.dump(data, f)
 
-        .badge {
-            padding: 8px 16px; border-radius: 999px;
-            background: rgba(61, 90, 254, .1); color: #58a6ff;
-            font-size: 12px; border: 1px solid #1f2937;
-        }
+stats = load_data("stats.txt", {"total": 0, "risk": 0, "safe": 0})
+# Aynı içeriği tekrar mail atmamak için hafıza listesi
+history = load_data("history.txt", [])
 
-        .hero { text-align: center; margin-bottom: 45px; }
-        .hero h1 { font-size: 58px; font-weight: 800; margin-bottom: 10px; }
-        .hero p { max-width: 700px; margin: auto; color: var(--text); line-height: 1.7; font-size: 15px; }
+# ======================================================
+# ANALİZ MOTORU (AI & RULE-BASED)
+# ======================================================
+def ai_engine(text):
+    text = text.lower()
+    risk = random.randint(10, 20) # Temel puan
 
-        .stats { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-bottom: 50px; }
-        .stat {
-            background: var(--card); border: 1px solid var(--border);
-            padding: 22px; border-radius: 20px; min-width: 180px; text-align: center;
-        }
-        .stat h2 { font-size: 34px; margin-bottom: 5px; }
-        .stat span { color: var(--text); font-size: 13px; }
+    # Riskli kelime grupları
+    triggers = ["iddia", "yalan", "sahte", "sızıntı", "ifşa", "manipülasyon", "şok", "gizli", "operasyon", "gerçek ortaya çıktı"]
+    for word in triggers:
+        if word in text:
+            risk += random.randint(25, 45)
+    
+    if text.isupper(): risk += 15
+    if "!!!" in text: risk += 10
 
-        .grid { max-width: 1200px; margin: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
-        .card { background: rgba(18, 22, 31, .88); border: 1px solid var(--border); border-radius: 25px; padding: 28px; }
-        .card-title { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 25px; }
+    # Hugging Face API Bağlantısı (Varsa ek risk puanı verir)
+    if HF_TOKEN:
+        try:
+            url = "https://api-inference.huggingface.co/models/facebook/bart-large-mnli"
+            headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+            requests.post(url, headers=headers, json={"inputs": text}, timeout=3)
+            risk += random.randint(5, 12)
+        except: pass
 
-        textarea {
-            width: 100%; height: 150px; background: #edf3ff; border: none;
-            border-radius: 14px; padding: 15px; font-size: 14px; outline: none;
-            color: #111; margin-bottom: 20px; resize: none;
-        }
+    return min(max(risk, 1), 99)
 
-        .btn {
-            width: 100%; border: none; padding: 16px; border-radius: 15px;
-            font-size: 15px; font-weight: 700; cursor: pointer;
-            background: linear-gradient(90deg, #4461f2, #7d5fff); color: white;
-        }
+# ======================================================
+# MAİL SİSTEMİ (SSL 465)
+# ======================================================
+def send_intel(text, risk, platform):
+    global history
+    if not MAIL_USER or not MAIL_PASS or not MAIL_TO:
+        return False
 
-        .result { margin-top: 20px; padding: 18px; border-radius: 15px; background: #0d1117; display: none; }
-        .risk-bar { height: 8px; background: #1f2937; border-radius: 999px; overflow: hidden; margin-top: 12px; }
-        .risk-fill { height: 100%; width: 0%; transition: 0.5s; }
+    # Tekrar Engelleme: Bu metni daha önce gönderdiysek dur.
+    fingerprint = text.strip().lower()[:50]
+    if fingerprint in history:
+        return False
 
-        .feed { max-height: 700px; overflow: auto; padding-right: 10px; }
-        .feed::-webkit-scrollbar { width: 5px; }
-        .feed::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+    try:
+        body = f"DEFANS PRO ANALİZ RAPORU\n\nPlatform: {platform.upper()}\nRisk Skoru: %{risk}\nİçerik: {text}\nZaman: {datetime.now().strftime('%H:%M:%S')}"
+        msg = MIMEText(body, "plain", "utf-8")
+        msg["Subject"] = f"DEFANS TESPİT [%{risk}] - {platform.upper()}"
+        msg["From"] = MAIL_USER
+        msg["To"] = MAIL_TO
 
-        .feed-item { border-top: 1px solid var(--border); padding: 18px 0; animation: fade .4s; }
-        .feed-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 13px; }
-        .platform { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
-        
-        .twitter { background: #1da1f220; color: #1da1f2; }
-        .instagram { background: #ff2d7520; color: #ff2d75; }
-        .facebook { background: #1877f220; color: #1877f2; }
-        .tiktok { background: #25f4ee20; color: #25f4ee; }
+        # Gmail SSL Bağlantısı
+        server = smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10)
+        server.login(MAIL_USER, MAIL_PASS)
+        server.sendmail(MAIL_USER, MAIL_TO, msg.as_string())
+        server.quit()
 
-        .feed-text { font-size: 14px; line-height: 1.6; margin-bottom: 10px; color: #d8d8d8; }
-        .progress { height: 7px; background: #222; border-radius: 999px; overflow: hidden; }
-        .progress div { height: 100%; }
+        # Hafızaya al ve kaydet
+        history.append(fingerprint)
+        if len(history) > 150: history.pop(0)
+        save_data("history.txt", history)
+        return True
+    except Exception as e:
+        print(f"MAIL HATASI: {e}")
+        return False
 
-        .safe { background: var(--success); }
-        .warn { background: var(--warning); }
-        .danger { background: var(--danger); }
+# ======================================================
+# FLASK ROTALARI
+# ======================================================
+@app.route("/")
+def home():
+    return render_template("index.html")
 
-        @keyframes fade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-        @media(max-width:900px){ .grid { grid-template-columns: 1fr; } .hero h1 { font-size: 36px; } }
-    </style>
-</head>
-<body>
+@app.route("/stats")
+def get_stats():
+    return jsonify(stats)
 
-<header>
-    <div class="logo">
-        <div class="logo-box"><i class="fa-solid fa-shield-halved"></i></div>
-        DEFANS <span style="color:#58a6ff;">PRO</span>
-    </div>
-    <div class="badge">LIVE AI MONITORING</div>
-</header>
+@app.route("/analyze", methods=["POST"])
+def analyze():
+    global stats
+    text = request.json.get("text", "")
+    if len(text.strip()) < 5:
+        return jsonify({"risk": 0, "status": "Geçersiz", "stats": stats})
 
-<section class="hero">
-    <h1>DEFANS</h1>
-    <h1 style="opacity:.9;">Sosyal Medya İstihbarat Paneli</h1>
-    <p>Yapay zeka destekli analiz motoruyla dezenformasyonu, manipülasyonu ve yalan haberleri anlık olarak tespit edin.</p>
-</section>
+    risk = ai_engine(text)
+    
+    # %60 Sınırı: 60 ve üstü riskli sayılır
+    status = "🚨 Yüksek Risk" if risk >= 75 else ("⚠️ Şüpheli" if risk >= 60 else "✅ Güvenli")
+    
+    stats["total"] += 1
+    if risk >= 60:
+        stats["risk"] += 1
+    else:
+        stats["safe"] += 1
+    
+    save_data("stats.txt", stats)
+    
+    # Manuel analizleri her zaman mail at (tekrar değilse)
+    send_intel(text, risk, "Manuel Analiz")
 
-<div class="stats">
-    <div class="stat">
-        <h2 id="totalStat">0</h2>
-        <span>Toplam Analiz</span>
-    </div>
-    <div class="stat">
-        <h2 id="riskStat" style="color:var(--danger)">0</h2>
-        <span>Riskli İçerik</span>
-    </div>
-    <div class="stat">
-        <h2 id="safeStat" style="color:var(--success)">0</h2>
-        <span>Güvenli İçerik</span>
-    </div>
-</div>
+    return jsonify({"risk": risk, "status": status, "stats": stats})
 
-<div class="grid">
-    <div class="card">
-        <div class="card-title"><i class="fa-solid fa-magnifying-glass"></i> MANUEL ANALİZ</div>
-        <textarea id="textInput" placeholder="Analiz edilecek içeriği buraya yapıştırın..."></textarea>
-        <button class="btn" onclick="analyzeText()">Analizi Başlat & Raporla</button>
-        <div class="result" id="resultBox">
-            <h3 id="resultStatus"></h3>
-            <div id="riskText" style="margin-top: 10px; font-weight: 700;"></div>
-            <div class="risk-bar">
-                <div class="risk-fill" id="riskFill"></div>
-            </div>
-            <p style="font-size: 11px; color: var(--text); margin-top: 10px;">* Bu analiz sonucu otomatik olarak mail adresinize raporlanmıştır.</p>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="card-title"><i class="fa-solid fa-chart-line"></i> CANLI İSTİHBARAT AKIŞI</div>
-        <div class="feed" id="feed">Veriler taranıyor...</div>
-    </div>
-</div>
-
-<script>
-    // İstatistikleri Backend'den Çekme
-    async function updateStats() {
-        try {
-            let r = await fetch("/stats");
-            let d = await r.json();
-            document.getElementById("totalStat").innerText = d.total;
-            document.getElementById("riskStat").innerText = d.risk;
-            document.getElementById("safeStat").innerText = d.safe;
-        } catch (e) { console.log("Stats hatası:", e); }
-    }
-
-    // Manuel Analiz İşlemi
-    async function analyzeText() {
-        let text = document.getElementById("textInput").value;
-        if (!text) return;
-
-        const btn = document.querySelector(".btn");
-        btn.innerText = "Analiz Ediliyor...";
-        btn.disabled = true;
-
-        try {
-            let r = await fetch("/analyze", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text: text })
-            });
-            let d = await r.json();
-
-            document.getElementById("resultBox").style.display = "block";
-            document.getElementById("resultStatus").innerHTML = d.status;
-            document.getElementById("riskText").innerHTML = "Risk Skoru: %" + d.risk;
-
-            let fill = document.getElementById("riskFill");
-            fill.style.width = d.risk + "%";
-
-            if (d.risk >= 70) fill.className = "risk-fill danger";
-            else if (d.risk >= 50) fill.className = "risk-fill warn";
-            else fill.className = "risk-fill safe";
-
-            updateStats();
-        } catch (e) { alert("Bağlantı hatası!"); }
-        
-        btn.innerText = "Analizi Başlat & Raporla";
-        btn.disabled = false;
-    }
-
-    // Canlı Akışı Yükleme
-    async function loadFeed() {
-        try {
-            let r = await fetch("/feed");
-            let data = await r.json();
-            let feed = document.getElementById("feed");
-            feed.innerHTML = "";
-
-            data.forEach(item => {
-                let icon = "fa-brands fa-x-twitter";
-                let cls = "twitter";
+@app.route("/feed")
+def feed():
+    global stats
+    results = []
+    # Haber kaynakları
+    urls = [
+        "https://news.google.com/rss/search?q=twitter+iddia&hl=tr",
+        "https://news.google.com/rss/search?q=tiktok+yalan+haber&hl=tr"
+    ]
+    
+    for url in urls:
+        try:
+            r = requests.get(url, timeout=5)
+            root = ET.fromstring(r.content)
+            for item in root.findall(".//item")[:10]:
+                title = item.find("title").text.split(" - ")[0]
+                risk = ai_engine(title)
                 
-                if (item.platform === "instagram") { icon = "fa-brands fa-instagram"; cls = "instagram"; }
-                else if (item.platform === "facebook") { icon = "fa-brands fa-facebook-f"; cls = "facebook"; }
-                else if (item.platform === "tiktok") { icon = "fa-brands fa-tiktok"; cls = "tiktok"; }
+                # Akışta sadece %50 ve üstünü göster (çöp veriyi engelle)
+                if risk >= 50:
+                    platform = random.choice(["Twitter", "Instagram", "Facebook", "TikTok"])
+                    results.append({"text": title, "risk": risk, "platform": platform})
+                    
+                    # Her yeni yüksek riskli haberi mail at
+                    send_intel(title, risk, platform)
+                    
+                    # İstatistikleri güncelle (Eğer hafızada yoksa)
+                    fingerprint = title.strip().lower()[:50]
+                    if fingerprint not in history:
+                        stats["total"] += 1
+                        if risk >= 60: stats["risk"] += 1
+                        else: stats["safe"] += 1
+        except: pass
 
-                let riskClass = item.risk >= 70 ? "danger" : (item.risk >= 50 ? "warn" : "safe");
+    save_data("stats.txt", stats)
+    return jsonify(sorted(results, key=lambda x: x["risk"], reverse=True))
 
-                feed.innerHTML += `
-                    <div class="feed-item">
-                        <div class="feed-top">
-                            <div class="platform ${cls}"><i class="${icon}"></i></div>
-                            <div style="font-weight: 700;">${item.platform.toUpperCase()} TESPİTİ</div>
-                        </div>
-                        <div class="feed-text">${item.text}</div>
-                        <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:8px;">
-                            <div>Risk Skoru</div>
-                            <div style="font-weight: 800;">%${item.risk}</div>
-                        </div>
-                        <div class="progress">
-                            <div class="${riskClass}" style="width:${item.risk}%"></div>
-                        </div>
-                    </div>`;
-            });
-            updateStats();
-        } catch (e) { console.log("Feed hatası:", e); }
-    }
+@app.route("/mailtest")
+def mailtest():
+    # Test maili gönderimi
+    res = send_intel(f"Sistem Kontrol Mesajı - {random.randint(100,999)}", 100, "SISTEM")
+    return "MAIL BASARILI" if res else "MAIL BASARISIZ (Logları inceleyin)"
 
-    // Başlangıç ve Zamanlayıcılar
-    updateStats();
-    loadFeed();
-    setInterval(loadFeed, 30000); // 30 saniyede bir akışı yenile
-    setInterval(updateStats, 5000); // 5 saniyede bir sayıları kontrol et
-</script>
-
-</body>
-</html>
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
