@@ -60,13 +60,13 @@ def save_stats(stats):
 stats = load_stats()
 
 # ======================================================
-# MAIL CACHE
+# CACHE
 # ======================================================
 
-sent_news = set()
+sent_cache = set()
 
 # ======================================================
-# TEXT FILTER
+# FILTER
 # ======================================================
 
 def is_meaningful(text):
@@ -76,10 +76,10 @@ def is_meaningful(text):
 
     text = text.strip()
 
-    if len(text) < 12:
+    if len(text) < 10:
         return False
 
-    meaningless = [
+    blacklist = [
 
         "asdasd",
         "123123",
@@ -87,19 +87,13 @@ def is_meaningful(text):
         "deneme",
         "aaaa",
         "jdjd",
-        "xddd",
         "qweqwe"
 
     ]
 
-    if text.lower() in meaningless:
+    if text.lower() in blacklist:
         return False
 
-    # anlamsız karakter spamı
-    if re.fullmatch(r'^[^a-zA-ZğüşöçıİĞÜŞÖÇ0-9]+$', text):
-        return False
-
-    # harf yoksa
     if not re.search(r'[a-zA-ZğüşöçıİĞÜŞÖÇ]', text):
         return False
 
@@ -115,33 +109,105 @@ def ai_engine(text):
 
     risk = 5
 
-    risky_words = [
+    # ======================================================
+    # ÇOK RİSKLİ
+    # ======================================================
 
-        "iddia",
+    very_risky = [
+
         "deepfake",
-        "manipülasyon",
-        "viral",
+        "gizli görüntü",
         "ifşa",
         "komplo",
         "sızıntı",
+        "manipülasyon",
+        "sahte haber",
+        "yalan haber",
+        "şok gerçek",
+        "gizli belge",
+        "kanıt ortaya çıktı",
         "yasaklandı",
-        "şok",
-        "son dakika",
-        "twitter",
-        "x.com",
-        "instagram",
-        "facebook",
-        "tiktok",
-        "sahte haber"
+        "sansür",
+        "algı operasyonu",
+        "montaj video",
+        "yapay zeka videosu"
 
     ]
 
-    for word in risky_words:
+    # ======================================================
+    # ORTA RİSK
+    # ======================================================
+
+    medium_risky = [
+
+        "iddia",
+        "viral",
+        "son dakika",
+        "şok",
+        "gündem oldu",
+        "olay video",
+        "paylaşım rekoru",
+        "tepki çekti",
+        "doğrulanmadı",
+        "x.com",
+        "twitter",
+        "instagram",
+        "facebook",
+        "tiktok"
+
+    ]
+
+    # ======================================================
+    # GÜVENLİ
+    # ======================================================
+
+    safe_words = [
+
+        "resmi açıklama",
+        "bakanlık",
+        "aa.com",
+        "reuters",
+        "doğrulandı",
+        "basın toplantısı"
+
+    ]
+
+    # ======================================================
+    # PUANLAMA
+    # ======================================================
+
+    for word in very_risky:
+
+        if word in text:
+            risk += random.randint(22,35)
+
+    for word in medium_risky:
 
         if word in text:
             risk += random.randint(10,18)
 
-    # AI desteği
+    for word in safe_words:
+
+        if word in text:
+            risk -= random.randint(5,12)
+
+    # ======================================================
+    # CAPS / CLICKBAIT
+    # ======================================================
+
+    if text.isupper():
+        risk += 15
+
+    if "!!!" in text:
+        risk += 10
+
+    if "???" in text:
+        risk += 8
+
+    # ======================================================
+    # HF AI
+    # ======================================================
+
     if HF_TOKEN:
 
         try:
@@ -163,10 +229,18 @@ def ai_engine(text):
                 timeout=4
             )
 
-            risk += random.randint(10,20)
+            risk += random.randint(8,18)
 
-        except:
-            pass
+        except Exception as e:
+
+            print("HF ERROR:", e)
+
+    # ======================================================
+    # LIMIT
+    # ======================================================
+
+    if risk < 1:
+        risk = 1
 
     if risk > 99:
         risk = 99
@@ -189,10 +263,10 @@ def send_intel(text, risk, platform):
 
         cache_key = text.strip().lower()
 
-        if cache_key in sent_news:
+        if cache_key in sent_cache:
             return False
 
-        sent_news.add(cache_key)
+        sent_cache.add(cache_key)
 
         body = f"""
 DEFANS PRO CANLI RAPOR
@@ -287,34 +361,35 @@ def analyze():
 
     status = "✅ Güvenli"
 
-    if risk > 70:
+    if risk >= 70:
         status = "🚨 Yüksek Risk"
 
-    elif risk > 40:
+    elif risk >= 50:
         status = "⚠️ Şüpheli"
 
     stats["total"] += 1
 
-    if risk > 60:
+    if risk >= 50:
         stats["risk"] += 1
     else:
         stats["safe"] += 1
 
     save_stats(stats)
 
-    mail_sent = send_intel(
-        text,
-        risk,
-        "manuel analiz"
-    )
+    # 50 üstü mail
+    if risk >= 50:
+
+        send_intel(
+            text,
+            risk,
+            "manuel analiz"
+        )
 
     return jsonify({
 
         "risk": risk,
 
         "status": status,
-
-        "mail": mail_sent,
 
         "stats": stats
 
@@ -344,13 +419,17 @@ def feed():
 
         "https://news.google.com/rss/search?q=twitter+iddia&hl=tr&gl=TR&ceid=TR:tr",
 
+        "https://news.google.com/rss/search?q=x.com+viral&hl=tr&gl=TR&ceid=TR:tr",
+
         "https://news.google.com/rss/search?q=instagram+viral&hl=tr&gl=TR&ceid=TR:tr",
 
         "https://news.google.com/rss/search?q=tiktok+manipülasyon&hl=tr&gl=TR&ceid=TR:tr",
 
         "https://news.google.com/rss/search?q=facebook+gündem&hl=tr&gl=TR&ceid=TR:tr",
 
-        "https://news.google.com/rss/search?q=deepfake+sosyal+medya&hl=tr&gl=TR&ceid=TR:tr"
+        "https://news.google.com/rss/search?q=deepfake+sosyal+medya&hl=tr&gl=TR&ceid=TR:tr",
+
+        "https://news.google.com/rss/search?q=sahte+haber&hl=tr&gl=TR&ceid=TR:tr"
 
     ]
 
@@ -365,7 +444,7 @@ def feed():
 
             root = ET.fromstring(r.content)
 
-            for item in root.findall(".//item")[:6]:
+            for item in root.findall(".//item")[:8]:
 
                 title = item.find("title").text
 
@@ -379,6 +458,7 @@ def feed():
                 platform = random.choice([
 
                     "twitter",
+                    "x",
                     "instagram",
                     "facebook",
                     "tiktok"
@@ -387,7 +467,7 @@ def feed():
 
                 stats["total"] += 1
 
-                if risk > 60:
+                if risk >= 50:
                     stats["risk"] += 1
                 else:
                     stats["safe"] += 1
@@ -404,11 +484,14 @@ def feed():
 
                 })
 
-                send_intel(
-                    title,
-                    risk,
-                    platform
-                )
+                # 50 üstü mail
+                if risk >= 50:
+
+                    send_intel(
+                        title,
+                        risk,
+                        platform
+                    )
 
         except Exception as e:
 
@@ -422,7 +505,29 @@ def feed():
         reverse=True
     )
 
-    return jsonify(results[:30])
+    return jsonify(results[:40])
+
+# ======================================================
+# MAIL TEST
+# ======================================================
+
+@app.route("/mailtest")
+def mailtest():
+
+    ok = send_intel(
+
+        "Bu bir DEFANS test mesajıdır",
+
+        88,
+
+        "TEST"
+
+    )
+
+    if ok:
+        return "MAIL GONDERILDI"
+
+    return "MAIL HATASI"
 
 # ======================================================
 # RUN
