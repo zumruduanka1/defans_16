@@ -59,12 +59,6 @@ def save_stats(stats):
 stats = load_stats()
 
 # ======================================================
-# MAIL CACHE
-# ======================================================
-
-sent_cache = set()
-
-# ======================================================
 # AI ENGINE
 # ======================================================
 
@@ -97,7 +91,6 @@ def ai_engine(text):
         if word in text:
             risk += random.randint(8,15)
 
-    # HuggingFace
     if HF_TOKEN:
 
         try:
@@ -138,19 +131,8 @@ def send_intel(text, risk, platform="feed"):
 
     try:
 
-        global sent_cache
-
-        key = f"{text}-{risk}"
-
-        if key in sent_cache:
-            return
-
-        sent_cache.add(key)
-
-        if len(sent_cache) > 500:
-            sent_cache.clear()
-
-        if not MAIL_USER:
+        if not MAIL_USER or not MAIL_PASS or not MAIL_TO:
+            print("MAIL ENV HATALI")
             return
 
         status = "✅ Güvenli"
@@ -162,8 +144,7 @@ def send_intel(text, risk, platform="feed"):
             status = "⚠️ Şüpheli"
 
         body = f"""
-
-DEFANS PRO CANLI İSTİHBARAT
+DEFANS PRO CANLI RAPOR
 
 Platform:
 {platform}
@@ -176,7 +157,6 @@ Durum:
 
 İçerik:
 {text}
-
 """
 
         msg = MIMEText(
@@ -188,13 +168,14 @@ Durum:
         msg["Subject"] = f"DEFANS ALERT %{risk}"
 
         msg["From"] = MAIL_USER
-
         msg["To"] = MAIL_TO
 
-        server = smtplib.SMTP_SSL(
+        server = smtplib.SMTP(
             "smtp.gmail.com",
-            465
+            587
         )
+
+        server.starttls()
 
         server.login(
             MAIL_USER,
@@ -203,11 +184,13 @@ Durum:
 
         server.sendmail(
             MAIL_USER,
-            [MAIL_TO],
+            MAIL_TO,
             msg.as_string()
         )
 
         server.quit()
+
+        print("MAIL GÖNDERİLDİ")
 
     except Exception as e:
 
@@ -354,7 +337,15 @@ def feed():
 
                 ])
 
-                result = {
+                print("MAIL:", title, risk)
+
+                send_intel(
+                    title,
+                    risk,
+                    platform
+                )
+
+                results.append({
 
                     "text": title,
 
@@ -362,15 +353,7 @@ def feed():
 
                     "platform": platform
 
-                }
-
-                results.append(result)
-
-                send_intel(
-                    title,
-                    risk,
-                    platform
-                )
+                })
 
         except Exception as e:
 
@@ -403,6 +386,12 @@ def feed():
 
             ])
 
+            send_intel(
+                text,
+                risk,
+                platform
+            )
+
             results.append({
 
                 "text": text,
@@ -412,12 +401,6 @@ def feed():
                 "platform": platform
 
             })
-
-            send_intel(
-                text,
-                risk,
-                platform
-            )
 
     results = sorted(
         results,
