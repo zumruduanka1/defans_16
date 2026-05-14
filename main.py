@@ -46,15 +46,14 @@ def load_stats():
             pass
 
     return {
-        "total": 1420,
-        "risk": 520,
-        "safe": 900
+        "total": 0,
+        "risk": 0,
+        "safe": 0
     }
 
 def save_stats(stats):
 
     with open("stats.txt", "w") as f:
-
         json.dump(stats, f)
 
 stats = load_stats()
@@ -67,34 +66,32 @@ def ai_engine(text):
 
     text = text.lower()
 
-    risk = 15
+    risk = 10
 
     risky_words = [
 
         "iddia",
         "yalan",
-        "şok",
         "deepfake",
-        "sızıntı",
-        "ifşa",
-        "komplo",
         "manipülasyon",
         "viral",
+        "şok",
+        "ifşa",
+        "komplo",
+        "sızıntı",
         "yasaklandı",
-        "son dakika",
-        "kanıt",
-        "gizli",
-        "tiktok",
-        "instagram",
         "twitter",
-        "facebook"
+        "x.com",
+        "instagram",
+        "facebook",
+        "tiktok"
 
     ]
 
     for word in risky_words:
 
         if word in text:
-            risk += random.randint(7,15)
+            risk += random.randint(8,15)
 
     if HF_TOKEN:
 
@@ -132,7 +129,7 @@ def ai_engine(text):
 # MAIL
 # ======================================================
 
-def send_intel(text, risk, platform="feed"):
+def send_intel(text, risk, platform):
 
     try:
 
@@ -140,7 +137,7 @@ def send_intel(text, risk, platform="feed"):
             return
 
         body = f"""
-DEFANS PRO RAPOR
+DEFANS PRO CANLI RAPOR
 
 Platform:
 {platform}
@@ -158,7 +155,7 @@ Risk:
             "utf-8"
         )
 
-        msg["Subject"] = f"DEFANS %{risk}"
+        msg["Subject"] = f"DEFANS ALERT %{risk}"
 
         msg["From"] = MAIL_USER
         msg["To"] = MAIL_TO
@@ -210,16 +207,6 @@ def analyze():
 
     text = request.json.get("text","")
 
-    if len(text) < 8:
-
-        return jsonify({
-
-            "risk":0,
-
-            "status":"Geçersiz içerik"
-
-        })
-
     risk = ai_engine(text)
 
     status = "✅ Güvenli"
@@ -256,6 +243,15 @@ def analyze():
     })
 
 # ======================================================
+# STATS API
+# ======================================================
+
+@app.route("/stats")
+def get_stats():
+
+    return jsonify(stats)
+
+# ======================================================
 # FEED
 # ======================================================
 
@@ -270,15 +266,15 @@ def feed():
 
         "https://news.google.com/rss/search?q=twitter+iddia&hl=tr&gl=TR&ceid=TR:tr",
 
+        "https://news.google.com/rss/search?q=x.com+viral&hl=tr&gl=TR&ceid=TR:tr",
+
         "https://news.google.com/rss/search?q=instagram+viral&hl=tr&gl=TR&ceid=TR:tr",
 
-        "https://news.google.com/rss/search?q=tiktok+gündem&hl=tr&gl=TR&ceid=TR:tr",
+        "https://news.google.com/rss/search?q=tiktok+manipülasyon&hl=tr&gl=TR&ceid=TR:tr",
 
-        "https://news.google.com/rss/search?q=facebook+manipülasyon&hl=tr&gl=TR&ceid=TR:tr",
+        "https://news.google.com/rss/search?q=facebook+gündem&hl=tr&gl=TR&ceid=TR:tr",
 
-        "https://news.google.com/rss/search?q=deepfake+sosyal+medya&hl=tr&gl=TR&ceid=TR:tr",
-
-        "https://news.google.com/rss/search?q=sahte+haber&hl=tr&gl=TR&ceid=TR:tr"
+        "https://news.google.com/rss/search?q=deepfake+sosyal+medya&hl=tr&gl=TR&ceid=TR:tr"
 
     ]
 
@@ -293,7 +289,7 @@ def feed():
 
             root = ET.fromstring(r.content)
 
-            for item in root.findall(".//item")[:10]:
+            for item in root.findall(".//item")[:8]:
 
                 title = item.find("title").text
 
@@ -304,6 +300,7 @@ def feed():
                 platform = random.choice([
 
                     "twitter",
+                    "x",
                     "instagram",
                     "facebook",
                     "tiktok"
@@ -350,23 +347,6 @@ def feed():
     )
 
     return jsonify(results[:40])
-
-# ======================================================
-# VIDEO
-# ======================================================
-
-@app.route("/video", methods=["POST"])
-def video():
-
-    risk = random.randint(50,95)
-
-    return jsonify({
-
-        "risk": risk,
-
-        "status": "🎥 Deepfake Şüphesi"
-
-    })
 
 # ======================================================
 # RUN

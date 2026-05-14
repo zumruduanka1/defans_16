@@ -736,6 +736,187 @@ loadFeed();
 setInterval(loadFeed,15000);
 
 </script>
+<script>
+
+async function analyzeText(){
+
+let text=document.getElementById(
+"textInput"
+).value;
+
+let r=await fetch("/analyze",{
+
+method:"POST",
+
+headers:{
+"Content-Type":"application/json"
+},
+
+body:JSON.stringify({
+text:text
+})
+
+});
+
+let d=await r.json();
+
+document.getElementById(
+"resultBox"
+).style.display="block";
+
+document.getElementById(
+"resultStatus"
+).innerHTML=d.status;
+
+document.getElementById(
+"riskText"
+).innerHTML=
+"Risk Skoru: %"+d.risk;
+
+let fill=document.getElementById(
+"riskFill"
+);
+
+fill.style.width=d.risk+"%";
+
+if(d.risk>70){
+
+fill.className=
+"risk-fill danger";
+
+}else if(d.risk>40){
+
+fill.className=
+"risk-fill warn";
+
+}else{
+
+fill.className=
+"risk-fill safe";
+
+}
+
+updateStats();
+
+}
+
+async function updateStats(){
+
+let r=await fetch("/stats");
+
+let d=await r.json();
+
+document.getElementById(
+"totalStat"
+).innerHTML=d.total;
+
+document.getElementById(
+"riskStat"
+).innerHTML=d.risk;
+
+document.getElementById(
+"safeStat"
+).innerHTML=d.safe;
+
+}
+
+async function loadFeed(){
+
+let r=await fetch("/feed");
+
+let data=await r.json();
+
+let feed=document.getElementById(
+"feed"
+);
+
+feed.innerHTML="";
+
+data.forEach(item=>{
+
+let icon="fa-brands fa-x-twitter";
+let cls="twitter";
+
+if(item.platform==="instagram"){
+icon="fa-brands fa-instagram";
+cls="instagram";
+}
+
+if(item.platform==="facebook"){
+icon="fa-brands fa-facebook-f";
+cls="facebook";
+}
+
+if(item.platform==="tiktok"){
+icon="fa-brands fa-tiktok";
+cls="tiktok";
+}
+
+let riskClass="safe";
+
+if(item.risk>70){
+riskClass="danger";
+}else if(item.risk>40){
+riskClass="warn";
+}
+
+feed.innerHTML += `
+
+<div class="feed-item">
+
+<div class="feed-top">
+
+<div class="platform ${cls}">
+<i class="${icon}"></i>
+</div>
+
+<div>
+${item.platform.toUpperCase()}
+</div>
+
+</div>
+
+<div class="feed-text">
+${item.text}
+</div>
+
+<div style="
+display:flex;
+justify-content:space-between;
+font-size:13px;
+margin-bottom:8px;
+">
+
+<div>Risk</div>
+
+<div>%${item.risk}</div>
+
+</div>
+
+<div class="progress">
+<div class="${riskClass}"
+style="width:${item.risk}%"></div>
+</div>
+
+</div>
+
+`;
+
+});
+
+updateStats();
+
+}
+
+updateStats();
+
+loadFeed();
+
+setInterval(loadFeed,15000);
+
+setInterval(updateStats,5000);
+
+</script>
 
 </body>
 </html>
