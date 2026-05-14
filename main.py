@@ -6,6 +6,7 @@ import requests
 import smtplib
 import json
 import random
+import time
 
 import xml.etree.ElementTree as ET
 
@@ -45,9 +46,9 @@ def load_stats():
             pass
 
     return {
-        "total": 1240,
-        "risk": 380,
-        "safe": 860
+        "total": 1420,
+        "risk": 520,
+        "safe": 900
     }
 
 def save_stats(stats):
@@ -82,14 +83,18 @@ def ai_engine(text):
         "yasaklandı",
         "son dakika",
         "kanıt",
-        "gizli"
+        "gizli",
+        "tiktok",
+        "instagram",
+        "twitter",
+        "facebook"
 
     ]
 
     for word in risky_words:
 
         if word in text:
-            risk += random.randint(8,15)
+            risk += random.randint(7,15)
 
     if HF_TOKEN:
 
@@ -109,11 +114,11 @@ def ai_engine(text):
                 url,
                 headers=headers,
                 json=payload,
-                timeout=6
+                timeout=5
             )
 
             if r.status_code == 200:
-                risk += random.randint(10,30)
+                risk += random.randint(10,25)
 
         except:
             pass
@@ -131,29 +136,17 @@ def send_intel(text, risk, platform="feed"):
 
     try:
 
-        if not MAIL_USER or not MAIL_PASS or not MAIL_TO:
-            print("MAIL ENV HATALI")
+        if not MAIL_USER:
             return
 
-        status = "✅ Güvenli"
-
-        if risk > 70:
-            status = "🚨 Yüksek Risk"
-
-        elif risk > 40:
-            status = "⚠️ Şüpheli"
-
         body = f"""
-DEFANS PRO CANLI RAPOR
+DEFANS PRO RAPOR
 
 Platform:
 {platform}
 
 Risk:
 %{risk}
-
-Durum:
-{status}
 
 İçerik:
 {text}
@@ -165,7 +158,7 @@ Durum:
             "utf-8"
         )
 
-        msg["Subject"] = f"DEFANS ALERT %{risk}"
+        msg["Subject"] = f"DEFANS %{risk}"
 
         msg["From"] = MAIL_USER
         msg["To"] = MAIL_TO
@@ -189,8 +182,6 @@ Durum:
         )
 
         server.quit()
-
-        print("MAIL GÖNDERİLDİ")
 
     except Exception as e:
 
@@ -229,25 +220,6 @@ def analyze():
 
         })
 
-    banned = [
-
-        "jdjd",
-        "123",
-        "asdasd",
-        "test"
-
-    ]
-
-    if any(b in text.lower() for b in banned):
-
-        return jsonify({
-
-            "risk":0,
-
-            "status":"Anlamsız içerik"
-
-        })
-
     risk = ai_engine(text)
 
     status = "✅ Güvenli"
@@ -275,8 +247,6 @@ def analyze():
 
     return jsonify({
 
-        "text": text,
-
         "risk": risk,
 
         "status": status,
@@ -292,19 +262,23 @@ def analyze():
 @app.route("/feed")
 def feed():
 
+    global stats
+
     results = []
 
     feeds = [
 
-        "https://news.google.com/rss/search?q=deepfake&hl=tr&gl=TR&ceid=TR:tr",
+        "https://news.google.com/rss/search?q=twitter+iddia&hl=tr&gl=TR&ceid=TR:tr",
 
-        "https://news.google.com/rss/search?q=manipülasyon&hl=tr&gl=TR&ceid=TR:tr",
+        "https://news.google.com/rss/search?q=instagram+viral&hl=tr&gl=TR&ceid=TR:tr",
 
-        "https://news.google.com/rss/search?q=sosyal+medya&hl=tr&gl=TR&ceid=TR:tr",
+        "https://news.google.com/rss/search?q=tiktok+gündem&hl=tr&gl=TR&ceid=TR:tr",
 
-        "https://news.google.com/rss/search?q=tiktok&hl=tr&gl=TR&ceid=TR:tr",
+        "https://news.google.com/rss/search?q=facebook+manipülasyon&hl=tr&gl=TR&ceid=TR:tr",
 
-        "https://news.google.com/rss/search?q=viral&hl=tr&gl=TR&ceid=TR:tr"
+        "https://news.google.com/rss/search?q=deepfake+sosyal+medya&hl=tr&gl=TR&ceid=TR:tr",
+
+        "https://news.google.com/rss/search?q=sahte+haber&hl=tr&gl=TR&ceid=TR:tr"
 
     ]
 
@@ -314,12 +288,12 @@ def feed():
 
             r = requests.get(
                 feed_url,
-                timeout=4
+                timeout=3
             )
 
             root = ET.fromstring(r.content)
 
-            for item in root.findall(".//item")[:8]:
+            for item in root.findall(".//item")[:10]:
 
                 title = item.find("title").text
 
@@ -332,12 +306,30 @@ def feed():
                     "twitter",
                     "instagram",
                     "facebook",
-                    "tiktok",
-                    "youtube"
+                    "tiktok"
 
                 ])
 
-                print("MAIL:", title, risk)
+                stats["total"] += 1
+
+                if risk > 60:
+                    stats["risk"] += 1
+                else:
+                    stats["safe"] += 1
+
+                result = {
+
+                    "text": title,
+
+                    "risk": risk,
+
+                    "platform": platform,
+
+                    "time": int(time.time())
+
+                }
+
+                results.append(result)
 
                 send_intel(
                     title,
@@ -345,62 +337,11 @@ def feed():
                     platform
                 )
 
-                results.append({
-
-                    "text": title,
-
-                    "risk": risk,
-
-                    "platform": platform
-
-                })
-
         except Exception as e:
 
             print("RSS ERROR:", e)
 
-    if len(results) == 0:
-
-        fallback = [
-
-            "Deepfake video sosyal medyada yayıldı",
-
-            "TikTok manipülasyon iddiası gündem oldu",
-
-            "Instagram paylaşımı tartışma yarattı",
-
-            "Twitter üzerinde yayılan haber doğrulanamadı"
-
-        ]
-
-        for text in fallback:
-
-            risk = ai_engine(text)
-
-            platform = random.choice([
-
-                "twitter",
-                "instagram",
-                "facebook",
-                "tiktok"
-
-            ])
-
-            send_intel(
-                text,
-                risk,
-                platform
-            )
-
-            results.append({
-
-                "text": text,
-
-                "risk": risk,
-
-                "platform": platform
-
-            })
+    save_stats(stats)
 
     results = sorted(
         results,
@@ -408,24 +349,18 @@ def feed():
         reverse=True
     )
 
-    return jsonify(results[:30])
+    return jsonify(results[:40])
 
 # ======================================================
-# VIDEO AI
+# VIDEO
 # ======================================================
 
 @app.route("/video", methods=["POST"])
 def video():
 
-    data = request.json
-
-    url = data.get("url","")
-
-    risk = random.randint(45,95)
+    risk = random.randint(50,95)
 
     return jsonify({
-
-        "url": url,
 
         "risk": risk,
 
