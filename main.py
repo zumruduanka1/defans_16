@@ -59,6 +59,12 @@ def save_stats(stats):
 stats = load_stats()
 
 # ======================================================
+# MAIL CACHE
+# ======================================================
+
+sent_cache = set()
+
+# ======================================================
 # AI ENGINE
 # ======================================================
 
@@ -110,7 +116,7 @@ def ai_engine(text):
                 url,
                 headers=headers,
                 json=payload,
-                timeout=10
+                timeout=6
             )
 
             if r.status_code == 200:
@@ -128,25 +134,48 @@ def ai_engine(text):
 # MAIL
 # ======================================================
 
-def send_intel(text, risk):
+def send_intel(text, risk, platform="feed"):
 
     try:
+
+        global sent_cache
+
+        key = f"{text}-{risk}"
+
+        if key in sent_cache:
+            return
+
+        sent_cache.add(key)
+
+        if len(sent_cache) > 500:
+            sent_cache.clear()
 
         if not MAIL_USER:
             return
 
+        status = "✅ Güvenli"
+
+        if risk > 70:
+            status = "🚨 Yüksek Risk"
+
+        elif risk > 40:
+            status = "⚠️ Şüpheli"
+
         body = f"""
 
-DEFANS PRO RAPOR
+DEFANS PRO CANLI İSTİHBARAT
 
-İçerik:
-{text}
+Platform:
+{platform}
 
-Risk Skoru:
+Risk:
 %{risk}
 
 Durum:
-{"⚠️ Şüpheli" if risk > 60 else "✅ Güvenli"}
+{status}
+
+İçerik:
+{text}
 
 """
 
@@ -156,7 +185,7 @@ Durum:
             "utf-8"
         )
 
-        msg["Subject"] = f"🚨 DEFANS %{risk} Risk"
+        msg["Subject"] = f"DEFANS ALERT %{risk}"
 
         msg["From"] = MAIL_USER
 
@@ -211,40 +240,40 @@ def analyze():
 
         return jsonify({
 
-            "risk": 0,
+            "risk":0,
 
-            "status": "Geçersiz içerik"
+            "status":"Geçersiz içerik"
 
         })
 
-    # saçma içerik filtre
     banned = [
+
         "jdjd",
         "123",
         "asdasd",
         "test"
+
     ]
 
     if any(b in text.lower() for b in banned):
 
         return jsonify({
 
-            "risk": 0,
+            "risk":0,
 
-            "status": "Anlamsız içerik"
+            "status":"Anlamsız içerik"
 
         })
 
     risk = ai_engine(text)
 
-    if risk > 60:
-        status = "⚠️ Şüpheli"
+    status = "✅ Güvenli"
+
+    if risk > 70:
+        status = "🚨 Yüksek Risk"
 
     elif risk > 40:
-        status = "🟠 Riskli"
-
-    else:
-        status = "✅ Güvenli"
+        status = "⚠️ Şüpheli"
 
     stats["total"] += 1
 
@@ -255,7 +284,11 @@ def analyze():
 
     save_stats(stats)
 
-    send_intel(text, risk)
+    send_intel(
+        text,
+        risk,
+        "manuel analiz"
+    )
 
     return jsonify({
 
@@ -284,22 +317,26 @@ def feed():
 
         "https://news.google.com/rss/search?q=manipülasyon&hl=tr&gl=TR&ceid=TR:tr",
 
-        "https://news.google.com/rss/search?q=sosyal+medya&hl=tr&gl=TR&ceid=TR:tr"
+        "https://news.google.com/rss/search?q=sosyal+medya&hl=tr&gl=TR&ceid=TR:tr",
+
+        "https://news.google.com/rss/search?q=tiktok&hl=tr&gl=TR&ceid=TR:tr",
+
+        "https://news.google.com/rss/search?q=viral&hl=tr&gl=TR&ceid=TR:tr"
 
     ]
 
-    try:
+    for feed_url in feeds:
 
-        for feed_url in feeds:
+        try:
 
             r = requests.get(
                 feed_url,
-                timeout=10
+                timeout=4
             )
 
             root = ET.fromstring(r.content)
 
-            for item in root.findall(".//item")[:6]:
+            for item in root.findall(".//item")[:8]:
 
                 title = item.find("title").text
 
@@ -317,7 +354,7 @@ def feed():
 
                 ])
 
-                results.append({
+                result = {
 
                     "text": title,
 
@@ -325,48 +362,70 @@ def feed():
 
                     "platform": platform
 
-                })
+                }
 
-                # mail gönder
-                send_intel(title, risk)
+                results.append(result)
 
-    except Exception as e:
+                send_intel(
+                    title,
+                    risk,
+                    platform
+                )
 
-        print("FEED ERROR:", e)
+        except Exception as e:
 
-    # fallback
+            print("RSS ERROR:", e)
+
     if len(results) == 0:
 
         fallback = [
 
             "Deepfake video sosyal medyada yayıldı",
 
-            "Instagram paylaşımı manipülasyon şüphesi taşıyor",
+            "TikTok manipülasyon iddiası gündem oldu",
 
-            "TikTok videosu gündem oldu",
+            "Instagram paylaşımı tartışma yarattı",
 
-            "Twitter üzerinde yayılan haber tartışma yarattı"
+            "Twitter üzerinde yayılan haber doğrulanamadı"
 
         ]
 
-        for x in fallback:
+        for text in fallback:
+
+            risk = ai_engine(text)
+
+            platform = random.choice([
+
+                "twitter",
+                "instagram",
+                "facebook",
+                "tiktok"
+
+            ])
 
             results.append({
 
-                "text": x,
+                "text": text,
 
-                "risk": ai_engine(x),
+                "risk": risk,
 
-                "platform": random.choice([
-                    "twitter",
-                    "instagram",
-                    "facebook",
-                    "tiktok"
-                ])
+                "platform": platform
 
             })
 
-    return jsonify(results)
+            send_intel(
+                text,
+                risk,
+                platform
+            )
+
+    results = sorted(
+        results,
+        key=lambda x: x["risk"],
+        reverse=True
+    )
+
+    return jsonify(results[:30])
 
 # ======================================================
 # VIDEO AI
